@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">uFR Online NFC Reader Example</string>
+    <string name="todo">TODO</string>
+    <string name="ip_address">IP address</string>
+</resources>
