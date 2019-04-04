@@ -8,7 +8,6 @@ import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
-import android.widget.EditText;
 import android.widget.TextView;
 
 import org.apache.http.HttpEntity;
@@ -17,25 +16,19 @@ import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.DefaultHttpClient;
-import org.w3c.dom.Text;
+import org.apache.http.params.BasicHttpParams;
+import org.apache.http.params.HttpConnectionParams;
+import org.apache.http.params.HttpParams;
 
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.io.OutputStream;
-import java.io.PrintWriter;
 import java.net.InetAddress;
-import java.net.InetSocketAddress;
-import java.net.Socket;
-import java.net.SocketAddress;
-import java.net.SocketException;
 import java.net.UnknownHostException;
-import java.util.Arrays;
 
 public class MainActivity extends AppCompatActivity {
 
-    public static final String EXTRA_MESSAGE = "space.mzero.tcpz.MESSAGE";
     public static String msg = "default";
     public static String resp = "";
     public static String server_address = "192.168.1.101";
@@ -74,10 +67,14 @@ public class MainActivity extends AppCompatActivity {
 
             HttpClient httpclient = new DefaultHttpClient();
             httppost = new HttpPost("http://"+ server_address +"/uart1");
+            HttpParams httpParameters = new BasicHttpParams();
 
             String str = "00";
             try {
 
+                HttpConnectionParams.setConnectionTimeout(httpParameters, 3000);
+                HttpConnectionParams.setSoTimeout(httpParameters, 5000);
+                ((DefaultHttpClient) httpclient).setParams(httpParameters);
                 httppost.setEntity(new StringEntity("552CAA000000DA"));
                 HttpResponse response = httpclient.execute(httppost);
                 httppost.abort();
@@ -121,22 +118,6 @@ public class MainActivity extends AppCompatActivity {
             return str;
         }
 
-        public String insertString(String originalString, String stringToBeInserted, int index)
-        {
-            String newString = new String();
-
-            for (int i = 0; i < originalString.length(); i++) {
-
-                newString += originalString.charAt(i);
-
-                if (i == index)
-                {
-                    newString += stringToBeInserted;
-                }
-            }
-            return newString;
-        }
-
         private String convertStreamToString(InputStream is) {
 
             BufferedReader reader = new BufferedReader(new InputStreamReader(is));
@@ -162,8 +143,6 @@ public class MainActivity extends AppCompatActivity {
         @Override
         protected void onPostExecute(String result) {
 
-            // might want to change "executed" for the returned string passed
-            // into onPostExecute() but that is upto you
             Abort = false;
             Log.d("Set Abort",Abort.toString());
             Log.d("tag","post ex");
@@ -195,21 +174,25 @@ public class MainActivity extends AppCompatActivity {
 
     public void sendMessage(View view) {
 
-        //Intent intent = new Intent(this, DisplayMessageActivity.class);
-        TextView textView = (TextView) findViewById(R.id.textView2);
-        textView.setText("UID : Loading...");
-        Log.d("msg",msg);
-        // intent.putExtra(EXTRA_MESSAGE, message);
-        Log.d("Check Abort",Abort.toString());
-        if(Abort==true) {
-            lo.cancel(false);
-            Log.d("Aborting",Abort.toString());
+        try
+        {
+            TextView textView = (TextView) findViewById(R.id.textView2);
+            textView.setText("UID : Loading...");
+            Log.d("msg",msg);
+            Log.d("Check Abort",Abort.toString());
+            if(Abort==true) {
+                lo.cancel(false);
+                Log.d("Aborting",Abort.toString());
+            }
+            else {
+                lo = new LongOperation();
+                lo.execute();
+            }
+            Abort = true;
         }
-        else {
-            lo = new LongOperation();
-            lo.execute();
+        catch (Exception e)
+        {
+            e.printStackTrace();
         }
-        Abort = true;
-        //startActivity(intent);
     }
 }
