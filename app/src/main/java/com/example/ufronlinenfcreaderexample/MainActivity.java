@@ -67,9 +67,6 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        TextView ApplicationVersion = findViewById(R.id.appVersion);
-        ApplicationVersion.setText("App version : " + APP_VERSION);
-
         SharedPreferences prefs = getSharedPreferences(MY_PREFS_NAME, MODE_PRIVATE);
         String nserver_address = prefs.getString("server", null);
 
