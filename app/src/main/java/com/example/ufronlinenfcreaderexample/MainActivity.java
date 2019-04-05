@@ -462,6 +462,8 @@ public class MainActivity extends AppCompatActivity {
 
     public void onUdpRadioButtonClicked(View view)
     {
+        TextView uidTV = findViewById(R.id.textView2);
+        uidTV.setText("");
         RadioButton http = findViewById(R.id.httpRB);
         RadioButton udp = findViewById(R.id.udpRB);
         RadioButton tcp = findViewById(R.id.tcpRB);
@@ -486,6 +488,8 @@ public class MainActivity extends AppCompatActivity {
 
     public void onHttpRadioButtonClicked(View view)
     {
+        TextView uidTV = findViewById(R.id.textView2);
+        uidTV.setText("");
         RadioButton http = findViewById(R.id.httpRB);
         RadioButton udp = findViewById(R.id.udpRB);
         RadioButton tcp = findViewById(R.id.tcpRB);
@@ -510,6 +514,8 @@ public class MainActivity extends AppCompatActivity {
 
     public void onTcpRadioButtonClicked(View view)
     {
+        TextView uidTV = findViewById(R.id.textView2);
+        uidTV.setText("");
         RadioButton http = findViewById(R.id.httpRB);
         RadioButton udp = findViewById(R.id.udpRB);
         RadioButton tcp = findViewById(R.id.tcpRB);
