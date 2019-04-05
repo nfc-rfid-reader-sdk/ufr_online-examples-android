@@ -12,19 +12,19 @@
         android:id="@+id/serverText"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="0dp"
+        android:layout_marginTop="50dp"
         android:layout_marginRight="95dp"
         android:autofillHints=""
         android:ems="10"
+        android:hint="IP address"
         android:inputType="textPersonName"
-        android:text="@string/ip_address"
         android:textColorLink="@color/colorAccent" />
 
     <Button
         android:id="@+id/button"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="50dp"
+        android:layout_marginTop="150dp"
         android:layout_marginRight="95dp"
         android:onClick="sendMessage"
         android:text="GET UID" />
@@ -33,17 +33,69 @@
         android:id="@+id/imageView2"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="100dp"
+        android:layout_marginTop="200dp"
         android:layout_marginRight="95dp"
         app:srcCompat="@drawable/transparent_text_field" />
+
+    <TextView
+        android:id="@+id/textView22"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="215dp"
+        android:text="UID :"
+        android:textSize="18sp"
+        android:textStyle="bold" />
+
+    <EditText
+        android:id="@+id/portText"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="100dp"
+        android:layout_marginRight="95dp"
+        android:ems="10"
+        android:hint="Port"
+        android:inputType="textPersonName" />
+
+    <RadioButton
+        android:id="@+id/udpRB"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginLeft="110dp"
+        android:onClick="onUdpRadioButtonClicked"
+        android:text="UDP" />
+
+    <RadioButton
+        android:id="@+id/httpRB"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginLeft="175dp"
+        android:checked="true"
+        android:onClick="onHttpRadioButtonClicked"
+        android:text="HTTP" />
+
+    <RadioButton
+        android:id="@+id/tcpRB"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginLeft="25dp"
+        android:onClick="onTcpRadioButtonClicked"
+        android:text="TCP/IP" />
 
     <TextView
         android:id="@+id/textView2"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:paddingTop="115dp"
-        android:text="UID :"
+        android:layout_marginLeft="45dp"
+        android:layout_marginTop="215dp"
         android:textSize="18sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/appVersion"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="700dp"
+        android:text="App version : "
         android:textStyle="bold" />
 
 </RelativeLayout>
