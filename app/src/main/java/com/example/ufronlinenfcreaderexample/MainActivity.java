@@ -1,5 +1,6 @@
 package com.example.ufronlinenfcreaderexample;
 
+import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.AsyncTask;
 import android.os.Build;
@@ -8,8 +9,11 @@ import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
 import android.widget.EditText;
 import android.widget.RadioButton;
+import android.widget.Spinner;
 import android.widget.TextView;
 
 import org.apache.http.HttpEntity;
@@ -21,7 +25,6 @@ import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.params.BasicHttpParams;
 import org.apache.http.params.HttpConnectionParams;
 import org.apache.http.params.HttpParams;
-import org.w3c.dom.Text;
 
 import java.io.BufferedReader;
 import java.io.DataOutputStream;
@@ -33,14 +36,18 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.InterfaceAddress;
+import java.net.NetworkInterface;
 import java.net.Socket;
 import java.net.SocketAddress;
 import java.net.SocketException;
 import java.net.UnknownHostException;
+import java.util.ArrayList;
+import java.util.Enumeration;
+import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
-
-    public static String msg = "default";
+    static Context context;
     public static String resp = "";
     public static String server_address = "192.168.0.101";
     public static Integer server_port = 8881;
@@ -48,11 +55,15 @@ public class MainActivity extends AppCompatActivity {
     public static HttpOperation httpCmd = null;
     public static UDPOperation udpCmd = null;
     public static TCPOperation tcpCmd = null;
-    public static final String APP_VERSION = "1.0";
+    public static BroadcastOperation broadcastOperation = null;
     HttpPost httppost = null;
+    byte[] cmdBuffer = {0x55, 0x2C, (byte) 0xAA, 0x00, 0x00, 0x00, (byte) 0xDA};
+    public boolean isBeep = false;
+    String cmdStr = "552CAA000000DA";
 
     public static final String MY_PREFS_NAME = "MyPrefsFile";
     TextView response;
+    Spinner spinner;
 
     public static String bytesToHex(byte[] byteArray)
     {
@@ -67,8 +78,8 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        context = this;
         SharedPreferences prefs = getSharedPreferences(MY_PREFS_NAME, MODE_PRIVATE);
-        String nserver_address = prefs.getString("server", null);
 
         RadioButton http = findViewById(R.id.httpRB);
         EditText portNumber = findViewById(R.id.portText);
@@ -77,12 +88,6 @@ public class MainActivity extends AppCompatActivity {
         {
             portNumber.setText("80");
             portNumber.setInputType(0);
-        }
-
-        if (nserver_address!= null)
-        {
-            TextView server_text =  findViewById(R.id.serverText);
-            server_text.setText(nserver_address);
         }
 
         Integer nserver_port = prefs.getInt("port", 8881);
@@ -94,7 +99,175 @@ public class MainActivity extends AppCompatActivity {
         }
 
         response = findViewById(R.id.textView2);
+    }
 
+    public String getBroadcastAddress() {
+        InetAddress broadcastAddress = null;
+        try {
+            Enumeration<NetworkInterface> networkInterface = NetworkInterface
+                    .getNetworkInterfaces();
+
+            while (broadcastAddress == null
+                    && networkInterface.hasMoreElements()) {
+                NetworkInterface singleInterface = networkInterface
+                        .nextElement();
+                String interfaceName = singleInterface.getName();
+                if (interfaceName.contains("wlan0")
+                        || interfaceName.contains("eth0")) {
+                    for (InterfaceAddress infaceAddress : singleInterface
+                            .getInterfaceAddresses()) {
+                        broadcastAddress = infaceAddress.getBroadcast();
+                        if (broadcastAddress != null) {
+                            break;
+                        }
+                    }
+                }
+            }
+
+        } catch (SocketException e) {
+            e.printStackTrace();
+        }
+
+        return broadcastAddress.toString().substring(1);
+    }
+
+    private class BroadcastOperation extends AsyncTask<String, Void, String> {
+
+        @RequiresApi(api = Build.VERSION_CODES.N)
+        @Override
+        protected String doInBackground(String... params) {
+
+            String str = "";
+
+            DatagramSocket socket = null;
+            InetAddress address;
+
+            try
+            {
+                socket = new DatagramSocket();
+                address = InetAddress.getByName(getBroadcastAddress());
+
+                byte[] bcBuffer = {0x01, 0x01};
+
+                DatagramPacket packet = new DatagramPacket(bcBuffer, bcBuffer.length, address, 8880);
+                socket.send(packet);
+
+                socket.setSoTimeout(5000);
+                byte[] receivedResponse = new byte[18];
+
+                long t= System.currentTimeMillis();
+                long end = t+150;
+
+                while(System.currentTimeMillis() < end)
+                {
+                    DatagramPacket rcv_packet = new DatagramPacket(receivedResponse, 18);
+
+                    socket.receive(rcv_packet);
+
+                    if(rcv_packet.getLength() == 18)
+                    {
+                        Log.d("Len : ", Integer.toString(rcv_packet.getLength()));
+                        receivedResponse = rcv_packet.getData();
+                        str += bytesToHex(receivedResponse);
+                    }
+                }
+
+            } catch (SocketException e) {
+                e.printStackTrace();
+            } catch (UnknownHostException e) {
+                e.printStackTrace();
+            } catch (IOException e) {
+                e.printStackTrace();
+            } finally {
+                if(socket != null){
+                    socket.close();
+                }
+            }
+
+            return str;
+        }
+
+        @Override
+        protected void onPostExecute(String result) {
+            isBeep = false;
+            Abort = false;
+            resp = result;
+            String temp = "";
+
+            spinner = findViewById(R.id.spinnerIP);
+
+            try {
+                for (int i = 0; i < resp.length(); i = i + 36) {
+                    temp += resp.substring(i, i + 8) + ",";
+                }
+
+                temp = temp.substring(0, temp.length() - 1);
+            } catch (Exception ex) { }
+
+            String[] ipAddresses = temp.split(",");
+            temp = "";
+            List<String> list = new ArrayList<String>();
+
+            try {
+                for (int i = 0; i < ipAddresses.length; i++) {
+                    for (int j = 0; j < ipAddresses[i].length(); j = j + 2) {
+                        int dec = Integer.parseInt(ipAddresses[i].substring(j, j + 2), 16);
+                        temp += Integer.toString(dec) + ".";
+                    }
+
+                    temp = temp.substring(0, temp.length() - 1);
+                    list.add(temp);
+                    temp = "";
+                }
+            } catch (Exception ex) { }
+
+            ArrayAdapter<String> dataAdapter = new ArrayAdapter<String>(context, android.R.layout.simple_spinner_dropdown_item, list);
+            dataAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+            spinner.setAdapter(dataAdapter);
+            spinner.setSelection(0);
+
+            spinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+
+                public void onItemSelected(AdapterView<?> parent, View view, int pos, long id) {
+                    server_address = parent.getItemAtPosition(pos).toString();
+                }
+
+                public void onNothingSelected(AdapterView<?> parent) {
+                    server_address = parent.getItemAtPosition(0).toString();
+                }
+            });
+        }
+
+        @Override
+        protected void onPreExecute()
+        {
+
+            if(isBeep == true)
+            {
+                cmdBuffer = new byte[]{0x55, 0x26, (byte)0xAA, 0x00, 0x01, 0x01, (byte)0xE0};
+            }
+            else
+            {
+                cmdBuffer = new byte[]{0x55, 0x2C, (byte) 0xAA, 0x00, 0x00, 0x00, (byte) 0xDA};
+            }
+
+            TextView port_text =  findViewById(R.id.portText);
+            server_port = Integer.parseInt(port_text.getText().toString().trim());
+            SharedPreferences.Editor editor = getSharedPreferences(MY_PREFS_NAME, MODE_PRIVATE).edit();
+            editor.putString("server", server_address);
+            editor.putInt("port", server_port);
+            editor.commit();
+
+        }
+
+        @Override
+        protected void onProgressUpdate(Void... values) {}
+
+        protected void onCancelled()
+        {
+            isBeep = false;
+            Abort = false;
+        }
     }
 
     private class UDPOperation extends AsyncTask<String, Void, String> {
@@ -113,10 +286,7 @@ public class MainActivity extends AppCompatActivity {
                 socket = new DatagramSocket();
                 address = InetAddress.getByName(server_address);
 
-                byte[] buf = {0x55, 0x2C, (byte)0xAA, 0x00, 0x00, 0x00, (byte)0xDA};
-
-                DatagramPacket packet =
-                        new DatagramPacket(buf, buf.length, address, server_port);
+                DatagramPacket packet = new DatagramPacket(cmdBuffer, cmdBuffer.length, address, server_port);
                 socket.send(packet);
 
                 socket.setSoTimeout(5000);
@@ -145,9 +315,13 @@ public class MainActivity extends AppCompatActivity {
 
                         str =  tempStr;
                     }
+                    else if ((str.substring(0, 4).equals("EC08")))
+                    {
+                        str = "NO CARD";
+                    }
                     else
                     {
-                        str = "";
+                        str = "COMMUNICATION ERROR";
                     }
                 }
                 catch (Exception e)
@@ -174,6 +348,7 @@ public class MainActivity extends AppCompatActivity {
         @Override
         protected void onPostExecute(String result)
         {
+            isBeep = false;
             Abort = false;
             resp = result;
             response.setText(resp);
@@ -182,14 +357,32 @@ public class MainActivity extends AppCompatActivity {
         @Override
         protected void onPreExecute()
         {
-            TextView server_text = findViewById(R.id.serverText);
+            spinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+
+                public void onItemSelected(AdapterView<?> parent, View view, int pos, long id) {
+                    server_address = parent.getItemAtPosition(pos).toString();
+                }
+
+                public void onNothingSelected(AdapterView<?> parent) {
+                }
+            });
+
+            if(isBeep == true)
+            {
+                cmdBuffer = new byte[]{0x55, 0x26, (byte)0xAA, 0x00, 0x01, 0x01, (byte)0xE0};
+            }
+            else
+            {
+                cmdBuffer = new byte[]{0x55, 0x2C, (byte) 0xAA, 0x00, 0x00, 0x00, (byte) 0xDA};
+            }
+
             TextView port_text =  findViewById(R.id.portText);
-            server_address = server_text.getText().toString().trim();
             server_port = Integer.parseInt(port_text.getText().toString().trim());
             SharedPreferences.Editor editor = getSharedPreferences(MY_PREFS_NAME, MODE_PRIVATE).edit();
             editor.putString("server", server_address);
             editor.putInt("port", server_port);
             editor.commit();
+
         }
 
         @Override
@@ -197,6 +390,7 @@ public class MainActivity extends AppCompatActivity {
 
         protected void onCancelled()
         {
+            isBeep = false;
             Abort = false;
         }
     }
@@ -216,11 +410,10 @@ public class MainActivity extends AppCompatActivity {
 
             try
             {
-
                 HttpConnectionParams.setConnectionTimeout(httpParameters, 3000);
                 HttpConnectionParams.setSoTimeout(httpParameters, 5000);
                 ((DefaultHttpClient) httpclient).setParams(httpParameters);
-                httppost.setEntity(new StringEntity("552CAA000000DA"));
+                httppost.setEntity(new StringEntity(cmdStr));
                 HttpResponse response = httpclient.execute(httppost);
                 httppost.abort();
                 HttpEntity entity = response.getEntity();
@@ -249,9 +442,13 @@ public class MainActivity extends AppCompatActivity {
 
                     str =  tempStr;
                 }
+                else if ((str.substring(0, 4).equals("EC08")))
+                {
+                    str = "NO CARD";
+                }
                 else
                 {
-                    str = "";
+                    str = "COMMUNICATION ERROR";
                 }
             }
             catch (Exception e)
@@ -289,6 +486,7 @@ public class MainActivity extends AppCompatActivity {
         @Override
         protected void onPostExecute(String result)
         {
+            isBeep = false;
             Abort = false;
             resp = result;
             response.setText(resp);
@@ -297,8 +495,25 @@ public class MainActivity extends AppCompatActivity {
         @Override
         protected void onPreExecute()
         {
-            TextView server_text = findViewById(R.id.serverText);
-            server_address = server_text.getText().toString().trim();
+            spinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+
+                public void onItemSelected(AdapterView<?> parent, View view, int pos, long id) {
+                    server_address = parent.getItemAtPosition(pos).toString();
+                }
+
+                public void onNothingSelected(AdapterView<?> parent) {
+                }
+            });
+
+            if(isBeep == true)
+            {
+                cmdStr = "5526AA000101E0";
+            }
+            else
+            {
+                cmdStr = "552CAA000000DA";
+            }
+
             SharedPreferences.Editor editor = getSharedPreferences(MY_PREFS_NAME, MODE_PRIVATE).edit();
             editor.putString("server", server_address);
             editor.putInt("port", server_port);
@@ -311,6 +526,7 @@ public class MainActivity extends AppCompatActivity {
 
         protected void onCancelled()
         {
+            isBeep = false;
             Abort = false;
         }
 
@@ -341,8 +557,7 @@ public class MainActivity extends AppCompatActivity {
                 }
 
                 DataOutputStream dos = new DataOutputStream(out);
-                byte[] buf = {0x55, 0x2C, (byte) 0xAA, 0x00, 0x00, 0x00, (byte) 0xDA};
-                dos.write(buf, 0, 7);
+                dos.write(cmdBuffer, 0, 7);
                 dos.flush();
 
             }
@@ -397,9 +612,13 @@ public class MainActivity extends AppCompatActivity {
 
                         str = tempStr;
                     }
+                    else if ((str.substring(0, 4).equals("EC08")))
+                    {
+                        str = "NO CARD";
+                    }
                     else
                     {
-                        str = "";
+                        str = "COMMUNICATION ERROE";
                     }
                 }
                 catch (Exception e)
@@ -429,6 +648,7 @@ public class MainActivity extends AppCompatActivity {
         @Override
         protected void onPostExecute(String result)
         {
+            isBeep = false;
             Abort = false;
             resp = result;
             response.setText(resp);
@@ -437,9 +657,26 @@ public class MainActivity extends AppCompatActivity {
         @Override
         protected void onPreExecute()
         {
-            TextView server_text =  findViewById(R.id.serverText);
+            spinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+
+                public void onItemSelected(AdapterView<?> parent, View view, int pos, long id) {
+                    server_address = parent.getItemAtPosition(pos).toString();
+                }
+
+                public void onNothingSelected(AdapterView<?> parent) {
+                }
+            });
+
+            if(isBeep == true)
+            {
+                cmdBuffer = new byte[]{0x55, 0x26, (byte)0xAA, 0x00, 0x01, 0x01, (byte)0xE0};
+            }
+            else
+            {
+                cmdBuffer = new byte[]{0x55, 0x2C, (byte) 0xAA, 0x00, 0x00, 0x00, (byte) 0xDA};
+            }
+
             TextView port_text =  findViewById(R.id.portText);
-            server_address = server_text.getText().toString().trim();
             server_port = Integer.parseInt(port_text.getText().toString().trim());
             SharedPreferences.Editor editor = getSharedPreferences(MY_PREFS_NAME, MODE_PRIVATE).edit();
             editor.putString("server", server_address);
@@ -453,8 +690,80 @@ public class MainActivity extends AppCompatActivity {
 
         protected void onCancelled()
         {
+            isBeep = false;
             Abort = false;
         }
+    }
+
+    public void onBeepClicked(View view)
+    {
+        isBeep = true;
+        RadioButton udp = findViewById(R.id.udpRB);
+        RadioButton http = findViewById(R.id.httpRB);
+        RadioButton tcp = findViewById(R.id.tcpRB);
+
+        if(udp.isChecked())
+        {
+            try
+            {
+                if(Abort == true)
+                {
+                    udpCmd.cancel(false);
+                }
+                else
+                {
+                    udpCmd = new UDPOperation();
+                    udpCmd.execute();
+                }
+                Abort = true;
+            }
+            catch (Exception e)
+            {
+                e.printStackTrace();
+            }
+        }
+        else if(http.isChecked())
+        {
+            try
+            {
+                if(Abort == true)
+                {
+                    httpCmd.cancel(false);
+                }
+                else
+                {
+                    httpCmd = new HttpOperation();
+                    httpCmd.execute();
+                }
+                Abort = true;
+            }
+            catch (Exception e)
+            {
+                e.printStackTrace();
+            }
+        }
+        else if(tcp.isChecked())
+        {
+            try
+            {
+                if(Abort == true)
+                {
+                    tcpCmd.cancel(false);
+                }
+                else
+                {
+                    tcpCmd = new TCPOperation();
+                    tcpCmd.execute();
+                }
+                Abort = true;
+            }
+            catch (Exception e)
+            {
+                e.printStackTrace();
+            }
+        }
+
+        isBeep = false;
     }
 
     public void onUdpRadioButtonClicked(View view)
@@ -603,4 +912,26 @@ public class MainActivity extends AppCompatActivity {
         }
 
     }
+
+    public void RefreshBroadcast(View view)
+    {
+        try
+        {
+            if(Abort == true)
+            {
+                broadcastOperation.cancel(false);
+            }
+            else
+            {
+                broadcastOperation = new BroadcastOperation();
+                broadcastOperation.execute();
+            }
+            Abort = true;
+        }
+        catch (Exception e)
+        {
+            e.printStackTrace();
+        }
+    }
 }
+
