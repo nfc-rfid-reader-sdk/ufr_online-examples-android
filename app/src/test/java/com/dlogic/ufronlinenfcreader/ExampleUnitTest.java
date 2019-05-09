@@ -1,4 +1,4 @@
-package com.example.ufronlinenfcreaderexample;
+package com.dlogic.ufronlinenfcreader;
 
 import org.junit.Test;
 
