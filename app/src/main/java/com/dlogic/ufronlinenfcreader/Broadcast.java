@@ -52,7 +52,7 @@ public class Broadcast extends AsyncTask<String, Void, String> {
             byte[] receivedResponse = new byte[18];
 
             long t= System.currentTimeMillis();
-            long end = t+150;
+            long end = t+300;
 
             while(System.currentTimeMillis() < end)
             {
@@ -174,7 +174,15 @@ public class Broadcast extends AsyncTask<String, Void, String> {
             e.printStackTrace();
         }
 
-        return broadcastAddress.toString().substring(1);
+        String return_ip = "";
+
+        try
+        {
+            return_ip = broadcastAddress.toString().substring(1);
+        }
+        catch (Exception ex){}
+
+        return return_ip;
     }
 
 }

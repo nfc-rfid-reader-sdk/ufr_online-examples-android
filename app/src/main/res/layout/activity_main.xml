@@ -32,7 +32,7 @@
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:gravity="center"
-        android:layout_weight="1">
+        android:layout_weight="0">
 
         <RadioButton
             android:id="@+id/radioButtonTCP"
@@ -69,14 +69,14 @@
 
         <Spinner
             android:layout_width="270dp"
-            android:layout_height="wrap_content"
+            android:layout_height="40dp"
             android:id="@+id/IpSpinner"
-            android:background="@drawable/text_view_sm"
+            android:background="@drawable/ip_spinner"
             android:layout_marginLeft="5dp"
             android:inputType="none"
             android:layout_marginRight="5dp"
-            android:layout_marginTop="7dp"
-            android:gravity="center" />
+            android:gravity="center"
+            />
 
         <Button
             android:id="@+id/btnScan"
@@ -126,18 +126,18 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginLeft="5dp"
-            android:layout_marginRight="5dp"
+            android:layout_marginRight="3dp"
             android:background="@drawable/text_view_sm"
             android:enabled="true"
             android:focusable="true"
             android:gravity="center"
-            android:inputType="number"
             android:maxLength="5"
             android:nextFocusDown="@+id/ebKey"
             android:singleLine="true"
             android:text="80"
             android:textColor="@android:color/darker_gray"
-            android:textSize="12sp" />
+            android:textSize="12sp"
+            android:inputType="number"/>
 
         <Button
             android:id="@+id/btnGetUID"
@@ -149,7 +149,7 @@
             android:textColor="@drawable/button_text_color"
             android:gravity="center"
             android:scaleType="centerInside"
-            android:layout_marginRight="5dp"
+            android:layout_marginRight="3dp"
             android:onClick="OnButtonGetUIDClick"/>
 
         <Button
@@ -162,7 +162,7 @@
             android:textColor="@drawable/button_text_color"
             android:gravity="center"
             android:scaleType="centerInside"
-            android:layout_marginRight="5dp"
+            android:layout_marginRight="3dp"
             android:onClick="onBeepClicked"/>
 
         <Button
@@ -198,7 +198,7 @@
                 android:background="@drawable/text_view_lg"
                 android:enabled="false"
                 android:focusableInTouchMode="false"
-                android:gravity="center_vertical|end"
+                android:gravity="center_vertical|center"
                 android:inputType="none"
                 android:paddingRight="20dp"
                 android:singleLine="true"
@@ -252,14 +252,18 @@
 
         <EditText
             android:layout_width="270dp"
-            android:layout_height="wrap_content"
+            android:layout_height="40dp"
             android:id="@+id/cmdEditText"
-            android:background="@drawable/text_view_sm"
+            android:background="@drawable/edittext_cmd"
             android:layout_marginLeft="5dp"
-            android:inputType="none"
             android:layout_marginRight="5dp"
-            android:layout_marginTop="7dp"
-            android:gravity="center" />
+            android:layout_marginTop="0dp"
+            android:gravity="center"
+            android:inputType="text"
+            android:textSize="12sp"
+            android:maxLines="1"
+            android:textColor="@android:color/darker_gray"
+            />
 
         <Button
             android:id="@+id/btnSend"
@@ -271,7 +275,8 @@
             android:textColor="@drawable/button_text_color"
             android:gravity="center"
             android:scaleType="centerInside"
-            android:onClick="onSendCommandClicked"/>
+            android:onClick="onSendCommandClicked"
+            />
     </LinearLayout>
 
     <LinearLayout
@@ -305,12 +310,11 @@
         android:layout_gravity="center_horizontal"
         android:inputType="none"
         android:text=""
-        android:textStyle="bold"
         android:textSize="12sp"
         android:layout_marginTop="0dp"
         android:layout_marginBottom="0dp"
         android:gravity="left"
-        android:textColor="#8fc546"
+        android:textColor="@android:color/darker_gray"
         android:layout_marginLeft="5dp"
         android:layout_marginRight="5dp"
         android:background="@drawable/transparent_text_field"/>

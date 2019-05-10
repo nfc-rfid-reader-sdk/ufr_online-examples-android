@@ -17,6 +17,7 @@ import static com.dlogic.ufronlinenfcreader.MainActivity.Abort;
 import static com.dlogic.ufronlinenfcreader.MainActivity.CmdResponse;
 import static com.dlogic.ufronlinenfcreader.MainActivity.bytesToHex;
 import static com.dlogic.ufronlinenfcreader.MainActivity.cmdText;
+import static com.dlogic.ufronlinenfcreader.MainActivity.eraseDelimiters;
 import static com.dlogic.ufronlinenfcreader.MainActivity.hexStringToByteArray;
 import static com.dlogic.ufronlinenfcreader.MainActivity.isBeep;
 import static com.dlogic.ufronlinenfcreader.MainActivity.isCommand;
@@ -63,7 +64,7 @@ public class UDP extends AsyncTask<String, Void, String> {
 
             if(isCommand == true)
             {
-                return str;
+
             }
             else
             {
@@ -90,7 +91,7 @@ public class UDP extends AsyncTask<String, Void, String> {
                     }
                     else
                     {
-                        str = "COMMUNICATION ERROR";
+                        str = "";
                     }
                 }
                 catch (Exception e)
@@ -148,6 +149,11 @@ public class UDP extends AsyncTask<String, Void, String> {
             }
         });
 
+        if(server_address.isEmpty())
+        {
+            return;
+        }
+
         if(isBeep == true)
         {
             cmdBuffer = new byte[]{0x55, 0x26, (byte)0xAA, 0x00, 0x01, 0x01, (byte)0xE0};
@@ -158,7 +164,32 @@ public class UDP extends AsyncTask<String, Void, String> {
         }
         else if(isCommand == true)
         {
-            cmdBuffer = hexStringToByteArray(cmdText.getText().toString().trim());
+            String cmdStr = cmdText.getText().toString().trim();
+            cmdStr = eraseDelimiters(cmdStr);
+
+            if(cmdStr.contains("xx") || cmdStr.contains("xX") || cmdStr.contains("Xx") || cmdStr.contains("XX"))
+            {
+                byte crc = 0;
+                int cmd_length = cmdStr.length() / 2;
+                byte[] calculated_crc = new byte[cmd_length];
+
+                byte[] temp_buffer = hexStringToByteArray(cmdStr.substring(0, cmdStr.length() - 2));
+
+                for(int i = 0; i < temp_buffer.length; i++)
+                {
+                    crc ^= temp_buffer[i];
+                }
+
+                crc += 0x07;
+                calculated_crc[temp_buffer.length] = crc;
+                System.arraycopy(temp_buffer,0,calculated_crc,0, temp_buffer.length);
+
+                cmdBuffer = hexStringToByteArray(bytesToHex(calculated_crc));
+            }
+            else
+            {
+                cmdBuffer = hexStringToByteArray(cmdStr);
+            }
         }
         else
         {

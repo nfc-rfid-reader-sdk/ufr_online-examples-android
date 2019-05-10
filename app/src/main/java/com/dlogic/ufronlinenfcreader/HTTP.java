@@ -21,10 +21,14 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.lang.reflect.Array;
 
 import static com.dlogic.ufronlinenfcreader.MainActivity.Abort;
 import static com.dlogic.ufronlinenfcreader.MainActivity.CmdResponse;
+import static com.dlogic.ufronlinenfcreader.MainActivity.bytesToHex;
 import static com.dlogic.ufronlinenfcreader.MainActivity.cmdText;
+import static com.dlogic.ufronlinenfcreader.MainActivity.eraseDelimiters;
+import static com.dlogic.ufronlinenfcreader.MainActivity.hexStringToByteArray;
 import static com.dlogic.ufronlinenfcreader.MainActivity.isBeep;
 import static com.dlogic.ufronlinenfcreader.MainActivity.isCommand;
 import static com.dlogic.ufronlinenfcreader.MainActivity.isLight;
@@ -70,7 +74,7 @@ public class HTTP extends AsyncTask<String, Void, String> {
 
             if(isCommand == true)
             {
-                return str;
+
             }
             else
             {
@@ -95,7 +99,7 @@ public class HTTP extends AsyncTask<String, Void, String> {
                 }
                 else
                 {
-                    str = "COMMUNICATION ERROR";
+                    str = "";
                 }
             }
         }
@@ -164,6 +168,11 @@ public class HTTP extends AsyncTask<String, Void, String> {
             }
         });
 
+        if(server_address.isEmpty())
+        {
+            return;
+        }
+
         if(isBeep == true)
         {
             cmdStr = "5526AA000101E0";
@@ -175,6 +184,25 @@ public class HTTP extends AsyncTask<String, Void, String> {
         else if(isCommand == true)
         {
             cmdStr = cmdText.getText().toString().trim();
+            cmdStr = eraseDelimiters(cmdStr);
+
+            if(cmdStr.contains("xx") || cmdStr.contains("xX") || cmdStr.contains("Xx") || cmdStr.contains("XX"))
+            {
+                byte[] hex_command = hexStringToByteArray(cmdStr.substring(0, cmdStr.length() - 2));
+                byte crc = 0;
+
+                for(int i = 0; i < hex_command.length; i++)
+                {
+                    crc ^= hex_command[i];
+                }
+                crc += 0x07;
+
+                byte[] calculated_crc = new byte[hex_command.length + 1];
+                System.arraycopy(hex_command,0,calculated_crc,0,hex_command.length);
+                calculated_crc[hex_command.length] = crc;
+
+                cmdStr = bytesToHex(calculated_crc);
+            }
         }
         else
         {

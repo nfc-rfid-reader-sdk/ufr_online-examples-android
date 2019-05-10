@@ -5,12 +5,16 @@ import android.content.Context;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.view.View;
+import android.widget.ArrayAdapter;
 import android.widget.EditText;
 import android.widget.RadioButton;
 import android.widget.Spinner;
 import android.widget.TextView;
 
 import org.apache.http.client.methods.HttpPost;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class MainActivity extends Activity {
 
@@ -27,7 +31,7 @@ public class MainActivity extends Activity {
     public static boolean isBeep = false;
     public static boolean isLight = false;
     public static boolean isCommand = false;
-    public static byte[] cmdBuffer = {0x55, 0x2C, (byte) 0xAA, 0x00, 0x00, 0x00, (byte) 0xDA};
+    public static byte[] cmdBuffer = new byte[4096];
     public static String cmdStr = "552CAA000000DA";
     public static HttpPost httppost = null;
 
@@ -47,6 +51,40 @@ public class MainActivity extends Activity {
         port_text = findViewById(R.id.portText);
         cmdText = findViewById(R.id.cmdEditText);
         CmdResponse = findViewById(R.id.textViewCmdResponse);
+
+        List<String> list = new ArrayList<String>();
+        list.add("");
+        spinner.setAdapter(new ArrayAdapter<String>(MainActivity.this,android.R.layout.simple_dropdown_item_1line,list));
+    }
+
+    public static boolean isHexChar(char c)
+    {
+        char hexChars[] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
+            'a', 'b', 'c', 'd', 'e', 'f', 'x',
+            'A', 'B', 'C', 'D', 'E', 'F', 'X'};
+
+        for(int i = 0; i < 24; i++)
+        {
+            if(c == hexChars[i])
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public static String eraseDelimiters(String hex_str)
+    {
+        for(int i = 0; i < hex_str.length(); i++)
+        {
+            if(!isHexChar(hex_str.charAt(i)))
+            {
+                hex_str = hex_str.substring(0, i) + hex_str.substring(i + 1);
+            }
+        }
+
+        return hex_str;
     }
 
     public static byte[] hexStringToByteArray(String paramString) throws IllegalArgumentException {
