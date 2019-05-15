@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.content.Context;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.text.InputType;
 import android.view.View;
 import android.widget.ArrayAdapter;
 import android.widget.EditText;
@@ -26,6 +27,7 @@ public class MainActivity extends Activity {
     public static TextView response;
     public static TextView CmdResponse;
     public static EditText port_text;
+    public static EditText ip_text;
     public static EditText cmdText;
     public static Boolean Abort = false;
     public static boolean isBeep = false;
@@ -51,6 +53,7 @@ public class MainActivity extends Activity {
         port_text = findViewById(R.id.portText);
         cmdText = findViewById(R.id.cmdEditText);
         CmdResponse = findViewById(R.id.textViewCmdResponse);
+        ip_text = findViewById(R.id.ipText);
 
         List<String> list = new ArrayList<String>();
         list.add("");

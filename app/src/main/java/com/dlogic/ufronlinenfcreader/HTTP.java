@@ -29,6 +29,7 @@ import static com.dlogic.ufronlinenfcreader.MainActivity.bytesToHex;
 import static com.dlogic.ufronlinenfcreader.MainActivity.cmdText;
 import static com.dlogic.ufronlinenfcreader.MainActivity.eraseDelimiters;
 import static com.dlogic.ufronlinenfcreader.MainActivity.hexStringToByteArray;
+import static com.dlogic.ufronlinenfcreader.MainActivity.ip_text;
 import static com.dlogic.ufronlinenfcreader.MainActivity.isBeep;
 import static com.dlogic.ufronlinenfcreader.MainActivity.isCommand;
 import static com.dlogic.ufronlinenfcreader.MainActivity.isLight;
@@ -161,12 +162,21 @@ public class HTTP extends AsyncTask<String, Void, String> {
 
             public void onItemSelected(AdapterView<?> parent, View view, int pos, long id) {
                 server_address = parent.getItemAtPosition(pos).toString();
+                ip_text.setText("");
             }
 
             public void onNothingSelected(AdapterView<?> parent) {
                 server_address = parent.getItemAtPosition(0).toString();
+                ip_text.setText("");
             }
         });
+
+        String manual_ip = ip_text.getText().toString().trim();
+
+        if(!manual_ip.isEmpty())
+        {
+            server_address = manual_ip;
+        }
 
         if(server_address.isEmpty())
         {
