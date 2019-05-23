@@ -30,7 +30,6 @@ import static com.dlogic.ufronlinenfcreader.MainActivity.cmdText;
 import static com.dlogic.ufronlinenfcreader.MainActivity.eraseDelimiters;
 import static com.dlogic.ufronlinenfcreader.MainActivity.hexStringToByteArray;
 import static com.dlogic.ufronlinenfcreader.MainActivity.ip_text;
-import static com.dlogic.ufronlinenfcreader.MainActivity.isBeep;
 import static com.dlogic.ufronlinenfcreader.MainActivity.isCommand;
 import static com.dlogic.ufronlinenfcreader.MainActivity.isLight;
 import static com.dlogic.ufronlinenfcreader.MainActivity.resp;
@@ -139,7 +138,6 @@ public class HTTP extends AsyncTask<String, Void, String> {
     @Override
     protected void onPostExecute(String result)
     {
-        isBeep = false;
         Abort = false;
         resp = result;
 
@@ -161,12 +159,16 @@ public class HTTP extends AsyncTask<String, Void, String> {
         spinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
 
             public void onItemSelected(AdapterView<?> parent, View view, int pos, long id) {
-                server_address = parent.getItemAtPosition(pos).toString();
+                String temp_ip = parent.getItemAtPosition(pos).toString();
+                int whitespace = temp_ip.indexOf(' ');
+                server_address = temp_ip.substring(0, whitespace).trim();
                 ip_text.setText("");
             }
 
             public void onNothingSelected(AdapterView<?> parent) {
-                server_address = parent.getItemAtPosition(0).toString();
+                String temp_ip = parent.getItemAtPosition(0).toString();
+                int whitespace = temp_ip.indexOf(' ');
+                server_address = temp_ip.substring(0, whitespace).trim();
                 ip_text.setText("");
             }
         });
@@ -183,13 +185,9 @@ public class HTTP extends AsyncTask<String, Void, String> {
             return;
         }
 
-        if(isBeep == true)
+        if(isLight == true)
         {
-            cmdStr = "5526AA000101E0";
-        }
-        else if(isLight == true)
-        {
-            cmdStr = "5526AA000300E1";
+            cmdStr = "5526AA000305E6";
         }
         else if(isCommand == true)
         {
@@ -228,7 +226,6 @@ public class HTTP extends AsyncTask<String, Void, String> {
     protected void onCancelled()
     {
         isCommand = false;
-        isBeep = false;
         Abort = false;
     }
 

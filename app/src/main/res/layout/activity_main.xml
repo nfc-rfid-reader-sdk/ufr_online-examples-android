@@ -14,14 +14,13 @@
 
         <TextView
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            android:layout_height="70dp"
             android:textAppearance="?android:attr/textAppearanceMedium"
-            android:text="uFR Online NFC Reader"
             android:textColor="#FFFFFF"
             android:textStyle="bold"
             android:textSize="20sp"
             android:id="@+id/siteLogo"
-            android:background="@drawable/header_logo"
+            android:background="@drawable/header_4"
             android:gravity="bottom|center"
             android:paddingBottom="12dp"/>
 
@@ -33,6 +32,15 @@
         android:orientation="horizontal"
         android:gravity="center"
         android:layout_weight="0">
+
+        <RadioButton
+            android:id="@+id/radioButtonHTTP"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:buttonTint="#8fc546"
+            android:checked="true"
+            android:text="HTTP"
+            android:onClick="OnRadioButtonHTTPClicked"/>
 
         <RadioButton
             android:id="@+id/radioButtonTCP"
@@ -50,14 +58,6 @@
             android:buttonTint="#8fc546"
             android:onClick="OnRadioButtonUDPClicked"/>
 
-        <RadioButton
-            android:id="@+id/radioButtonHTTP"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:buttonTint="#8fc546"
-            android:checked="true"
-            android:text="HTTP"
-            android:onClick="OnRadioButtonHTTPClicked"/>
 
     </LinearLayout>
 
@@ -65,10 +65,33 @@
         android:orientation="horizontal"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_marginBottom="5dp"
         android:padding="0dp">
 
+        <LinearLayout
+            android:orientation="vertical"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:padding="0dp">
+
+            <TextView
+                android:id="@+id/ip_and_serial"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_horizontal"
+                android:inputType="none"
+                android:text="IP address / Serial number :"
+                android:textStyle="normal"
+                android:textSize="12sp"
+                android:layout_marginTop="0dp"
+                android:layout_marginBottom="0dp"
+                android:gravity="left"
+                android:textColor="#8fc546"
+                android:layout_marginLeft="13dp"
+                android:layout_marginRight="5dp"/>
+
         <Spinner
-            android:layout_width="180dp"
+            android:layout_width="270dp"
             android:layout_height="40dp"
             android:id="@+id/IpSpinner"
             android:background="@drawable/ip_spinner"
@@ -78,23 +101,34 @@
             android:gravity="center"
             />
 
+        </LinearLayout>
+
         <Button
             android:id="@+id/btnScan"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:background="@drawable/button_pattern"
+            android:background="@drawable/button_scan_pattern"
             android:text="SCAN"
             android:textSize="12sp"
-            android:textColor="@drawable/button_text_color"
+            android:textColor="#000000"
             android:gravity="center"
             android:scaleType="centerInside"
             android:onClick="OnScanClicked"/>
+    </LinearLayout>
 
-        <LinearLayout
-            android:orientation="vertical"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:padding="0dp">
+    <LinearLayout
+        android:orientation="horizontal"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="5dp"
+        android:padding="0dp">
+
+    <LinearLayout
+        android:orientation="vertical"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="5dp"
+        android:padding="0dp">
 
         <TextView
             android:id="@+id/ipLabel"
@@ -102,84 +136,135 @@
             android:layout_height="wrap_content"
             android:layout_gravity="center_horizontal"
             android:inputType="none"
-            android:text="IP address :"
-            android:textStyle="bold"
+            android:text="Manual IP input :"
+            android:textStyle="normal"
             android:textSize="12sp"
             android:layout_marginTop="0dp"
             android:layout_marginBottom="0dp"
-            android:gravity="center"
+            android:gravity="left"
             android:textColor="#8fc546"
-            android:layout_marginLeft="5dp"
+            android:layout_marginLeft="13dp"
             android:layout_marginRight="5dp"/>
 
         <EditText
             android:id="@+id/ipText"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            android:layout_width="175dp"
+            android:layout_height="40dp"
             android:layout_marginLeft="5dp"
             android:layout_marginRight="3dp"
-            android:background="@drawable/text_view_sm"
+            android:background="@drawable/ip_input1"
             android:enabled="true"
             android:focusable="true"
             android:gravity="center"
+            android:hint="IP address"
+            android:inputType="text"
             android:nextFocusDown="@+id/ebKey"
             android:singleLine="true"
             android:text=""
             android:textColor="@android:color/darker_gray"
-            android:textSize="12sp"
-            android:inputType="text"/>
+            android:textSize="12sp" />
+
+    </LinearLayout>
+
+        <LinearLayout
+            android:orientation="vertical"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:padding="0dp">
+
+            <TextView
+                android:id="@+id/portLabel"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_horizontal"
+                android:inputType="none"
+                android:text="Port :"
+                android:textStyle="normal"
+                android:textSize="12sp"
+                android:layout_marginTop="0dp"
+                android:layout_marginBottom="0dp"
+                android:gravity="left"
+                android:textColor="#8fc546"
+                android:layout_marginLeft="13dp"
+                android:layout_marginRight="5dp"/>
+
+            <EditText
+                android:id="@+id/portText"
+                android:layout_width="85dp"
+                android:layout_height="40dp"
+                android:layout_marginLeft="5dp"
+                android:layout_marginRight="5dp"
+                android:background="@drawable/port_input1"
+                android:enabled="true"
+                android:focusable="true"
+                android:gravity="center"
+                android:maxLength="5"
+                android:nextFocusDown="@+id/ebKey"
+                android:singleLine="true"
+                android:text="80"
+                android:textColor="@android:color/darker_gray"
+                android:textSize="12sp"
+                android:inputType="none"/>
         </LinearLayout>
 
-
+        <Button
+            android:id="@+id/btnLight"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@drawable/button_pattern"
+            android:text="UI\nSIGNAL"
+            android:textSize="12sp"
+            android:textColor="@drawable/button_text_color"
+            android:gravity="center"
+            android:scaleType="centerInside"
+            android:layout_marginRight="5dp"
+            android:onClick="onLightClicked"/>
     </LinearLayout>
 
     <LinearLayout
         android:orientation="horizontal"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_marginBottom="5dp"
         android:padding="0dp">
 
-        <TextView
-            android:id="@+id/portLabel"
-            android:layout_width="match_parent"
+        <LinearLayout
+            android:orientation="vertical"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_gravity="center_horizontal"
-            android:inputType="none"
-            android:text="Port :"
-            android:textStyle="bold"
-            android:textSize="12sp"
-            android:layout_marginTop="0dp"
-            android:layout_marginBottom="0dp"
-            android:gravity="center"
-            android:textColor="#8fc546"
-            android:layout_marginLeft="5dp"
-            android:layout_marginRight="5dp"/>
+            android:padding="0dp">
 
-    </LinearLayout>
+            <TextView
+                android:id="@+id/labelCardUid"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_gravity="left"
+                android:inputType="none"
+                android:text="Card UID :"
+                android:textStyle="normal"
+                android:textSize="12sp"
+                android:layout_marginTop="0dp"
+                android:layout_marginBottom="0dp"
+                android:gravity="left"
+                android:textColor="#8fc546"
+                android:layout_marginLeft="15dp"
+                android:layout_marginRight="5dp"/>
 
-    <LinearLayout
-        android:orientation="horizontal"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:padding="0dp">
-
-        <EditText
-            android:id="@+id/portText"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginLeft="5dp"
-            android:layout_marginRight="3dp"
-            android:background="@drawable/text_view_sm"
-            android:enabled="true"
-            android:focusable="true"
-            android:gravity="center"
-            android:maxLength="5"
-            android:nextFocusDown="@+id/ebKey"
-            android:singleLine="true"
-            android:text="80"
-            android:textColor="@android:color/darker_gray"
-            android:textSize="12sp"
-            android:inputType="none"/>
+            <EditText
+                android:id="@+id/txtUID"
+                android:layout_width="270dp"
+                android:layout_height="40dp"
+                android:background="@drawable/edittext_cmd"
+                android:layout_marginLeft="5dp"
+                android:layout_marginRight="5dp"
+                android:layout_marginTop="0dp"
+                android:gravity="center"
+                android:inputType="text"
+                android:textSize="12sp"
+                android:maxLines="1"
+                android:textColor="@android:color/darker_gray"
+                />
+        </LinearLayout>
 
         <Button
             android:id="@+id/btnGetUID"
@@ -191,33 +276,8 @@
             android:textColor="@drawable/button_text_color"
             android:gravity="center"
             android:scaleType="centerInside"
-            android:layout_marginRight="3dp"
-            android:onClick="OnButtonGetUIDClick"/>
-
-        <Button
-            android:id="@+id/btnBeep"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:background="@drawable/button_pattern"
-            android:text="BEEP"
-            android:textSize="12sp"
-            android:textColor="@drawable/button_text_color"
-            android:gravity="center"
-            android:scaleType="centerInside"
-            android:layout_marginRight="3dp"
-            android:onClick="onBeepClicked"/>
-
-        <Button
-            android:id="@+id/btnLight"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:background="@drawable/button_pattern"
-            android:text="LIGHT"
-            android:textSize="12sp"
-            android:textColor="@drawable/button_text_color"
-            android:gravity="center"
-            android:scaleType="centerInside"
-            android:onClick="onLightClicked"/>
+            android:onClick="OnButtonGetUIDClick"
+            />
     </LinearLayout>
 
     <LinearLayout
@@ -226,86 +286,43 @@
         android:layout_height="wrap_content"
         android:padding="0dp">
 
-        <FrameLayout
-            android:layout_width="match_parent"
+        <LinearLayout
+            android:orientation="vertical"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_gravity="center_horizontal"
-            android:layout_weight="1">
-
-            <EditText
-                android:id="@+id/txtUID"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_gravity="center_vertical"
-                android:background="@drawable/text_view_lg"
-                android:enabled="false"
-                android:focusableInTouchMode="false"
-                android:gravity="center_vertical|center"
-                android:inputType="none"
-                android:paddingRight="20dp"
-                android:singleLine="true"
-                android:textColor="@android:color/darker_gray"
-                android:textSize="14sp" />
-
-            <TextView
-                android:id="@+id/labelCardUid"
-                android:layout_width="wrap_content"
-                android:layout_height="match_parent"
-                android:text="@string/txt_card_uid"
-                android:textSize="8sp"
-                android:textStyle="bold"
-                android:layout_marginLeft="25dp"
-                android:gravity="left|center_vertical"
-                android:textColor="#8fc546" />
-
-        </FrameLayout>
-
-    </LinearLayout>
-
-    <LinearLayout
-        android:orientation="horizontal"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:padding="0dp">
+            android:padding="0dp">
 
         <TextView
             android:id="@+id/labelCommand"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_gravity="center_horizontal"
+            android:layout_gravity="left"
             android:inputType="none"
             android:text="Command :"
-            android:textStyle="bold"
+            android:textStyle="normal"
             android:textSize="12sp"
             android:layout_marginTop="0dp"
             android:layout_marginBottom="0dp"
-            android:gravity="center"
+            android:gravity="left"
             android:textColor="#8fc546"
-            android:layout_marginLeft="5dp"
+            android:layout_marginLeft="15dp"
             android:layout_marginRight="5dp"/>
 
-    </LinearLayout>
-
-    <LinearLayout
-        android:orientation="horizontal"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:padding="0dp">
-
-        <EditText
-            android:layout_width="270dp"
-            android:layout_height="40dp"
-            android:id="@+id/cmdEditText"
-            android:background="@drawable/edittext_cmd"
-            android:layout_marginLeft="5dp"
-            android:layout_marginRight="5dp"
-            android:layout_marginTop="0dp"
-            android:gravity="center"
-            android:inputType="text"
-            android:textSize="12sp"
-            android:maxLines="1"
-            android:textColor="@android:color/darker_gray"
-            />
+            <EditText
+                android:layout_width="270dp"
+                android:layout_height="40dp"
+                android:id="@+id/cmdEditText"
+                android:background="@drawable/edittext_cmd"
+                android:layout_marginLeft="5dp"
+                android:layout_marginRight="5dp"
+                android:layout_marginTop="0dp"
+                android:gravity="center"
+                android:inputType="text"
+                android:textSize="12sp"
+                android:maxLines="1"
+                android:textColor="@android:color/darker_gray"
+                />
+        </LinearLayout>
 
         <Button
             android:id="@+id/btnSend"
@@ -327,20 +344,28 @@
         android:layout_height="wrap_content"
         android:padding="0dp">
 
+    </LinearLayout>
+
+    <LinearLayout
+        android:orientation="horizontal"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:padding="0dp">
+
         <TextView
-            android:id="@+id/labeResponse"
+            android:id="@+id/labelResponse"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_gravity="center_horizontal"
             android:inputType="none"
             android:text="Response :"
-            android:textStyle="bold"
+            android:textStyle="normal"
             android:textSize="12sp"
             android:layout_marginTop="0dp"
             android:layout_marginBottom="0dp"
             android:gravity="center"
             android:textColor="#8fc546"
-            android:layout_marginLeft="5dp"
+            android:layout_marginLeft="15dp"
             android:layout_marginRight="5dp"/>
 
     </LinearLayout>
@@ -357,9 +382,9 @@
         android:layout_marginBottom="0dp"
         android:gravity="left"
         android:textColor="@android:color/darker_gray"
-        android:layout_marginLeft="5dp"
-        android:layout_marginRight="5dp"
-        android:background="@drawable/transparent_text_field"/>
+        android:layout_marginLeft="15dp"
+        android:layout_marginRight="15dp"
+        />
 
 </LinearLayout>
 

@@ -49,20 +49,19 @@ public class Broadcast extends AsyncTask<String, Void, String> {
             socket.send(packet);
 
             socket.setSoTimeout(5000);
-            byte[] receivedResponse = new byte[18];
+            byte[] receivedResponse = new byte[28];
 
             long t= System.currentTimeMillis();
-            long end = t+300;
+            long end = t+500;
 
             while(System.currentTimeMillis() < end)
             {
-                DatagramPacket rcv_packet = new DatagramPacket(receivedResponse, 18);
+                DatagramPacket rcv_packet = new DatagramPacket(receivedResponse, 28);
 
                 socket.receive(rcv_packet);
 
-                if(rcv_packet.getLength() == 18)
+                if(rcv_packet.getLength() == 28)
                 {
-                    Log.d("Len : ", Integer.toString(rcv_packet.getLength()));
                     receivedResponse = rcv_packet.getData();
                     str += bytesToHex(receivedResponse);
                 }
@@ -89,29 +88,42 @@ public class Broadcast extends AsyncTask<String, Void, String> {
         Abort = false;
         resp = result;
         String temp = "";
+        String temp_serialNum = "";
 
         try {
-            for (int i = 0; i < resp.length(); i = i + 36) {
+            for (int i = 0; i < resp.length(); i = i + 56) {
                 temp += resp.substring(i, i + 8) + ",";
+                temp_serialNum += resp.substring(i + 38, i + 16 + 38) + ",";
             }
 
             temp = temp.substring(0, temp.length() - 1);
+            temp_serialNum = temp_serialNum.substring(0, temp_serialNum.length() - 1);
+
         } catch (Exception ex) { }
 
         String[] ipAddresses = temp.split(",");
+        String[] serialNumbers = temp_serialNum.split(",");
         temp = "";
+        temp_serialNum = "";
         List<String> list = new ArrayList<String>();
 
         try {
             for (int i = 0; i < ipAddresses.length; i++) {
+
                 for (int j = 0; j < ipAddresses[i].length(); j = j + 2) {
                     int dec = Integer.parseInt(ipAddresses[i].substring(j, j + 2), 16);
                     temp += Integer.toString(dec) + ".";
                 }
 
+                for (int k = 0; k < serialNumbers[i].length(); k = k + 2) {
+                    int dec = Integer.parseInt(serialNumbers[i].substring(k, k + 2), 16);
+                    temp_serialNum += (char)dec;
+                }
+
                 temp = temp.substring(0, temp.length() - 1);
-                list.add(temp);
+                list.add(temp + " / " + temp_serialNum);
                 temp = "";
+                temp_serialNum = "";
             }
         } catch (Exception ex) { }
 
@@ -123,11 +135,15 @@ public class Broadcast extends AsyncTask<String, Void, String> {
         spinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
 
             public void onItemSelected(AdapterView<?> parent, View view, int pos, long id) {
-                server_address = parent.getItemAtPosition(pos).toString();
+                String temp_ip = parent.getItemAtPosition(pos).toString();
+                int whitespace = temp_ip.indexOf(' ');
+                server_address = temp_ip.substring(0, whitespace);
             }
 
             public void onNothingSelected(AdapterView<?> parent) {
-                server_address = parent.getItemAtPosition(0).toString();
+                String temp_ip = parent.getItemAtPosition(0).toString();
+                int whitespace = temp_ip.indexOf(' ');
+                server_address = temp_ip.substring(0, whitespace);
             }
         });
 

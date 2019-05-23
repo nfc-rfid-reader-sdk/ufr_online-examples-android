@@ -26,11 +26,11 @@ public class MainActivity extends Activity {
     public static Spinner spinner;
     public static TextView response;
     public static TextView CmdResponse;
+    public static TextView num_of_bytes;
     public static EditText port_text;
     public static EditText ip_text;
     public static EditText cmdText;
     public static Boolean Abort = false;
-    public static boolean isBeep = false;
     public static boolean isLight = false;
     public static boolean isCommand = false;
     public static byte[] cmdBuffer = new byte[4096];
@@ -54,6 +54,7 @@ public class MainActivity extends Activity {
         cmdText = findViewById(R.id.cmdEditText);
         CmdResponse = findViewById(R.id.textViewCmdResponse);
         ip_text = findViewById(R.id.ipText);
+        num_of_bytes = findViewById(R.id.labelResponse);
 
         List<String> list = new ArrayList<String>();
         list.add("");
@@ -272,13 +273,6 @@ public class MainActivity extends Activity {
         DoOperation();
     }
 
-    public void onBeepClicked(View view)
-    {
-        isBeep = true;
-        DoOperation();
-        isBeep = false;
-    }
-
     public void onLightClicked(View view)
     {
         isLight = true;
@@ -291,4 +285,5 @@ public class MainActivity extends Activity {
         isCommand = true;
         DoOperation();
     }
+
 }

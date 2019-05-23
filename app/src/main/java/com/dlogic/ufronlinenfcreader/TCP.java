@@ -19,12 +19,10 @@ import java.net.SocketException;
 import static com.dlogic.ufronlinenfcreader.MainActivity.Abort;
 import static com.dlogic.ufronlinenfcreader.MainActivity.CmdResponse;
 import static com.dlogic.ufronlinenfcreader.MainActivity.bytesToHex;
-import static com.dlogic.ufronlinenfcreader.MainActivity.cmdStr;
 import static com.dlogic.ufronlinenfcreader.MainActivity.cmdText;
 import static com.dlogic.ufronlinenfcreader.MainActivity.eraseDelimiters;
 import static com.dlogic.ufronlinenfcreader.MainActivity.hexStringToByteArray;
 import static com.dlogic.ufronlinenfcreader.MainActivity.ip_text;
-import static com.dlogic.ufronlinenfcreader.MainActivity.isBeep;
 import static com.dlogic.ufronlinenfcreader.MainActivity.isCommand;
 import static com.dlogic.ufronlinenfcreader.MainActivity.isLight;
 import static com.dlogic.ufronlinenfcreader.MainActivity.port_text;
@@ -160,7 +158,6 @@ public class TCP extends AsyncTask<String, Void, String> {
     protected void onPostExecute(String result)
     {
         isLight = false;
-        isBeep = false;
         Abort = false;
         resp = result;
 
@@ -182,12 +179,16 @@ public class TCP extends AsyncTask<String, Void, String> {
         spinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
 
             public void onItemSelected(AdapterView<?> parent, View view, int pos, long id) {
-                server_address = parent.getItemAtPosition(pos).toString();
+                String temp_ip = parent.getItemAtPosition(pos).toString();
+                int whitespace = temp_ip.indexOf(' ');
+                server_address = temp_ip.substring(0, whitespace).trim();
                 ip_text.setText("");
             }
 
             public void onNothingSelected(AdapterView<?> parent) {
-                server_address = parent.getItemAtPosition(0).toString();
+                String temp_ip = parent.getItemAtPosition(0).toString();
+                int whitespace = temp_ip.indexOf(' ');
+                server_address = temp_ip.substring(0, whitespace).trim();
                 ip_text.setText("");
             }
         });
@@ -204,13 +205,9 @@ public class TCP extends AsyncTask<String, Void, String> {
             return;
         }
 
-        if(isBeep == true)
+        if(isLight == true)
         {
-            cmdBuffer = new byte[]{0x55, 0x26, (byte)0xAA, 0x00, 0x01, 0x01, (byte)0xE0};
-        }
-        else if(isLight == true)
-        {
-            cmdBuffer = new byte[]{0x55, 0x26, (byte)0xAA, 0x00, 0x03, 0x00, (byte)0xE1};
+            cmdBuffer = new byte[]{0x55, 0x26, (byte)0xAA, 0x00, 0x03, 0x05, (byte)0xE6};
         }
         else if(isCommand == true)
         {
@@ -257,7 +254,6 @@ public class TCP extends AsyncTask<String, Void, String> {
     {
         isLight = false;
         isCommand = false;
-        isBeep = false;
         Abort = false;
     }
 

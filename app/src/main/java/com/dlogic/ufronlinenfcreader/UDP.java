@@ -3,6 +3,7 @@ package com.dlogic.ufronlinenfcreader;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.support.annotation.RequiresApi;
+import android.util.Log;
 import android.view.View;
 import android.widget.AdapterView;
 
@@ -20,7 +21,6 @@ import static com.dlogic.ufronlinenfcreader.MainActivity.cmdText;
 import static com.dlogic.ufronlinenfcreader.MainActivity.eraseDelimiters;
 import static com.dlogic.ufronlinenfcreader.MainActivity.hexStringToByteArray;
 import static com.dlogic.ufronlinenfcreader.MainActivity.ip_text;
-import static com.dlogic.ufronlinenfcreader.MainActivity.isBeep;
 import static com.dlogic.ufronlinenfcreader.MainActivity.isCommand;
 import static com.dlogic.ufronlinenfcreader.MainActivity.isLight;
 import static com.dlogic.ufronlinenfcreader.MainActivity.port_text;
@@ -120,7 +120,6 @@ public class UDP extends AsyncTask<String, Void, String> {
     @Override
     protected void onPostExecute(String result)
     {
-        isBeep = false;
         Abort = false;
         resp = result;
 
@@ -142,12 +141,16 @@ public class UDP extends AsyncTask<String, Void, String> {
         spinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
 
             public void onItemSelected(AdapterView<?> parent, View view, int pos, long id) {
-                server_address = parent.getItemAtPosition(pos).toString();
+                String temp_ip = parent.getItemAtPosition(pos).toString();
+                int whitespace = temp_ip.indexOf(' ');
+                server_address = temp_ip.substring(0, whitespace).trim();
                 ip_text.setText("");
             }
 
             public void onNothingSelected(AdapterView<?> parent) {
-                server_address = parent.getItemAtPosition(0).toString();
+                String temp_ip = parent.getItemAtPosition(0).toString();
+                int whitespace = temp_ip.indexOf(' ');
+                server_address = temp_ip.substring(0, whitespace).trim();
                 ip_text.setText("");
             }
         });
@@ -159,13 +162,9 @@ public class UDP extends AsyncTask<String, Void, String> {
             server_address = manual_ip;
         }
 
-        if(isBeep == true)
+        if(isLight == true)
         {
-            cmdBuffer = new byte[]{0x55, 0x26, (byte)0xAA, 0x00, 0x01, 0x01, (byte)0xE0};
-        }
-        else if(isLight == true)
-        {
-            cmdBuffer = new byte[]{0x55, 0x26, (byte)0xAA, 0x00, 0x03, 0x00, (byte)0xE1};
+            cmdBuffer = new byte[]{0x55, 0x26, (byte)0xAA, 0x00, 0x03, 0x05, (byte)0xE6};
         }
         else if(isCommand == true)
         {
@@ -210,7 +209,6 @@ public class UDP extends AsyncTask<String, Void, String> {
     protected void onCancelled()
     {
         isCommand = false;
-        isBeep = false;
         Abort = false;
     }
 }
