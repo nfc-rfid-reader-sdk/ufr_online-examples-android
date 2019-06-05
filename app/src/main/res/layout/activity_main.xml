@@ -60,6 +60,13 @@
             android:buttonTint="#8fc546"
             android:onClick="OnRadioButtonUDPClicked"/>
 
+        <RadioButton
+            android:id="@+id/radioButtonBluetooth"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Bluetooth"
+            android:buttonTint="#8fc546"
+            android:onClick="onRadioButtonBluetoothClicked"/>
 
     </LinearLayout>
 
