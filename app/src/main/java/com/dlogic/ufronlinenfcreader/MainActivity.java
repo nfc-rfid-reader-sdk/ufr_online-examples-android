@@ -1,51 +1,31 @@
 package com.dlogic.ufronlinenfcreader;
 
-import android.Manifest;
 import android.app.Activity;
-import android.bluetooth.BluetoothAdapter;
-import android.bluetooth.BluetoothDevice;
-import android.bluetooth.BluetoothSocket;
-import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
-import android.content.IntentFilter;
-import android.os.Build;
+import android.graphics.Color;
+import android.provider.MediaStore;
+import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
-import android.os.SystemClock;
-import android.util.Log;
+import android.text.InputType;
 import android.view.View;
-import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
+import android.widget.Button;
 import android.widget.EditText;
 import android.widget.RadioButton;
 import android.widget.Spinner;
 import android.widget.TextView;
-import android.widget.Toast;
-
+import com.dlogic.ufronlinenfcreader.BluetoothActivity.*;
 import org.apache.http.client.methods.HttpPost;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.lang.reflect.Method;
-import java.util.UUID;
+import java.util.ArrayList;
+import java.util.List;
+
+import static com.dlogic.ufronlinenfcreader.BluetoothActivity.mConnectedThread;
+import static com.dlogic.ufronlinenfcreader.BluetoothActivity.mmOutStream;
 
 public class MainActivity extends Activity {
-
-    //Bluetooth
-    //---------------------------------------
-    BluetoothAdapter mBluetoothAdapter;
-    List<String> listDevices;
-    public ArrayList<BluetoothDevice> mBTDevices = new ArrayList<>();
-    private BluetoothSocket mBTSocket = null;
-    private static final UUID BTMODULEUUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
-    private InputStream mmInStream = null;
-    private OutputStream mmOutStream = null;
-    byte[] BTbuffer = new byte[256];
-    //---------------------------------------
 
     static Context context;
     public static String resp = "";
@@ -70,6 +50,9 @@ public class MainActivity extends Activity {
     public static HTTP httpCmd = null;
     public static TCP tcpCmd = null;
 
+    public static boolean BT_GET_UID = false;
+    public static boolean BT_SEND_CMD = false;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -83,41 +66,13 @@ public class MainActivity extends Activity {
         CmdResponse = findViewById(R.id.textViewCmdResponse);
         ip_text = findViewById(R.id.ipText);
         num_of_bytes = findViewById(R.id.labelResponse);
-        listDevices = new ArrayList<String>();
 
-        mBTDevices = new ArrayList<>();
-        mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+        RadioButton http = findViewById(R.id.radioButtonHTTP);
+        RadioButton bt = findViewById(R.id.radioButtonBluetooth);
 
-        spinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-
-            RadioButton bt = findViewById(R.id.radioButtonBluetooth);
-
-            public void onItemSelected(AdapterView<?> parent, View view, int i, long id) {
-                if(bt.isChecked())
-                {
-                    mBluetoothAdapter.cancelDiscovery();
-
-                    if(Build.VERSION.SDK_INT > Build.VERSION_CODES.JELLY_BEAN_MR2){
-                        mBTDevices.get(i).createBond();
-                    }
-
-                    connectToBluetoothDevice(mBTDevices.get(i));
-                }
-            }
-
-            public void onNothingSelected(AdapterView<?> parent) {
-                if(bt.isChecked())
-                {
-                    mBluetoothAdapter.cancelDiscovery();
-
-                    if(Build.VERSION.SDK_INT > Build.VERSION_CODES.JELLY_BEAN_MR2){
-                        mBTDevices.get(0).createBond();
-                    }
-
-                    connectToBluetoothDevice(mBTDevices.get(0));
-                }
-            }
-        });
+        List<String> list = new ArrayList<String>();
+        list.add("");
+        spinner.setAdapter(new ArrayAdapter<String>(MainActivity.this,android.R.layout.simple_dropdown_item_1line,list));
     }
 
     public static boolean isHexChar(char c)
@@ -184,31 +139,22 @@ public class MainActivity extends Activity {
 
     public void OnScanClicked(View view)
     {
-        RadioButton bt = findViewById(R.id.radioButtonBluetooth);
-
-        if(bt.isChecked())
+        try
         {
-            discoverBluetoothDevices();
+            if(Abort == true)
+            {
+                broadcastOperation.cancel(false);
+            }
+            else
+            {
+                broadcastOperation = new Broadcast();
+                broadcastOperation.execute();
+            }
+            Abort = true;
         }
-        else
+        catch (Exception e)
         {
-            try
-            {
-                if(Abort == true)
-                {
-                    broadcastOperation.cancel(false);
-                }
-                else
-                {
-                    broadcastOperation = new Broadcast();
-                    broadcastOperation.execute();
-                }
-                Abort = true;
-            }
-            catch (Exception e)
-            {
-                e.printStackTrace();
-            }
+            e.printStackTrace();
         }
     }
 
@@ -226,30 +172,10 @@ public class MainActivity extends Activity {
         portNumber.setText("8881");
         portNumber.setInputType(1);
 
-        if(bt.isChecked())
-        {
-            spinner.setAdapter(null);
-        }
-
         udp.setChecked(false);
         http.setChecked(false);
         tcp.setChecked(true);
         bt.setChecked(false);
-
-        if(mBluetoothAdapter.isEnabled())
-        {
-            mBluetoothAdapter.disable();
-
-            IntentFilter BTIntent = new IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED);
-            registerReceiver(mBroadcastReceiver1, BTIntent);
-        }
-
-        try {
-            if(mBTSocket.isConnected())
-            {
-                mBTSocket.close();
-            }
-        } catch (IOException e) { }
     }
 
     public void OnRadioButtonUDPClicked(View view)
@@ -266,30 +192,10 @@ public class MainActivity extends Activity {
         portNumber.setText("8881");
         portNumber.setInputType(1);
 
-        if(bt.isChecked())
-        {
-            spinner.setAdapter(null);
-        }
-
         udp.setChecked(true);
         http.setChecked(false);
         tcp.setChecked(false);
         bt.setChecked(false);
-
-        if(mBluetoothAdapter.isEnabled())
-        {
-            mBluetoothAdapter.disable();
-
-            IntentFilter BTIntent = new IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED);
-            registerReceiver(mBroadcastReceiver1, BTIntent);
-        }
-
-        try {
-            if(mBTSocket.isConnected())
-            {
-                mBTSocket.close();
-            }
-        } catch (IOException e) { }
     }
 
     public void OnRadioButtonHTTPClicked(View view)
@@ -306,30 +212,10 @@ public class MainActivity extends Activity {
         portNumber.setText("80");
         portNumber.setInputType(0);
 
-        if(bt.isChecked())
-        {
-            spinner.setAdapter(null);
-        }
-
         udp.setChecked(false);
         http.setChecked(true);
         tcp.setChecked(false);
         bt.setChecked(false);
-
-        if(mBluetoothAdapter.isEnabled())
-        {
-            mBluetoothAdapter.disable();
-
-            IntentFilter BTIntent = new IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED);
-            registerReceiver(mBroadcastReceiver1, BTIntent);
-        }
-
-        try {
-            if(mBTSocket.isConnected())
-            {
-                mBTSocket.close();
-            }
-        } catch (IOException e) { }
     }
 
     public void DoOperation()
@@ -407,22 +293,14 @@ public class MainActivity extends Activity {
 
         if(bt.isChecked())
         {
-            byte[] input = new byte[]{0x55, 0x2C, (byte) 0xAA, 0x00, 0x00, 0x00, (byte) 0xDA};
-            writeBluetoothSerial(input);
-            readBluetoothSerial();
-
-            if(BTbuffer[1] == 0x08)
-            {
-                response.setText("NO CARD");
-            }
-            else
-            {
-                String BT_UID = bytesToHex(BTbuffer);
-                response.setText(BT_UID.substring(14, 14 + BTbuffer[5] * 2));
-            }
+            BT_GET_UID = true;
+            byte[] byteArray1 = { 0x55, 0x2C, (byte)0xAA, 0x00, 0x00, 0x00, (byte)0xDA};
+            if(mConnectedThread != null)
+                try {
+                    mmOutStream.write(byteArray1);
+                } catch (IOException e) { }
         }
-        else
-        {
+        else {
             DoOperation();
         }
     }
@@ -432,8 +310,11 @@ public class MainActivity extends Activity {
 
         if (bt.isChecked())
         {
-            byte[] UISignal = new byte[]{0x55, 0x26, (byte) 0xAA, 0x00, 0x03, 0x05, (byte) 0xE6};
-            writeBluetoothSerial(UISignal);
+            byte[] byteArray1 = {0x55, 0x26, (byte)0xAA, 0x00, 0x03, 0x05, (byte)0xE6};
+            if(mConnectedThread != null)
+                try {
+                    mmOutStream.write(byteArray1);
+                } catch (IOException e) { }
         }
         else
         {
@@ -446,10 +327,11 @@ public class MainActivity extends Activity {
     public void onSendCommandClicked(View view)
     {
         RadioButton bt = findViewById(R.id.radioButtonBluetooth);
-        byte[] BT_CMD = new byte[300];
 
         if(bt.isChecked())
         {
+            BT_SEND_CMD = true;
+            byte[] BT_Cmd;
             String cmdStr = cmdText.getText().toString().trim();
             cmdStr = eraseDelimiters(cmdStr);
 
@@ -470,17 +352,17 @@ public class MainActivity extends Activity {
                 calculated_crc[temp_buffer.length] = crc;
                 System.arraycopy(temp_buffer,0,calculated_crc,0, temp_buffer.length);
 
-                BT_CMD = hexStringToByteArray(bytesToHex(calculated_crc));
+                BT_Cmd = hexStringToByteArray(bytesToHex(calculated_crc));
             }
             else
             {
-                BT_CMD = hexStringToByteArray(cmdStr);
+                BT_Cmd = hexStringToByteArray(cmdStr);
             }
 
-            writeBluetoothSerial(BT_CMD);
-            readBluetoothSerial();
-
-            CmdResponse.setText(bytesToHex(BTbuffer));
+            if(mConnectedThread != null)
+                try {
+                    mmOutStream.write(BT_Cmd);
+                } catch (IOException e) { }
         }
         else
         {
@@ -489,207 +371,18 @@ public class MainActivity extends Activity {
         }
     }
 
-
-    //--------------------------------------------------------------
-    //Bluetooth implementation
-    //--------------------------------------------------------------
-
-    private final BroadcastReceiver mBroadcastReceiver4 = new BroadcastReceiver() {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            final String action = intent.getAction();
-
-            if(action.equals(BluetoothDevice.ACTION_BOND_STATE_CHANGED)){
-                BluetoothDevice mDevice = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
-                //3 cases:
-                //case1: bonded already
-                if (mDevice.getBondState() == BluetoothDevice.BOND_BONDED){
-                }
-                //case2: creating a bone
-                if (mDevice.getBondState() == BluetoothDevice.BOND_BONDING) {
-                }
-                //case3: breaking a bond
-                if (mDevice.getBondState() == BluetoothDevice.BOND_NONE) {
-                }
-            }
-        }
-    };
-
-
-
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        unregisterReceiver(mBroadcastReceiver1);
-        unregisterReceiver(mBroadcastReceiver3);
-        unregisterReceiver(mBroadcastReceiver4);
-        //mBluetoothAdapter.cancelDiscovery();
-    }
-
-    private final BroadcastReceiver mBroadcastReceiver1 = new BroadcastReceiver() {
-        public void onReceive(Context context, Intent intent) {
-            String action = intent.getAction();
-            // When discovery finds a device
-            if (action.equals(mBluetoothAdapter.ACTION_STATE_CHANGED)) {
-                final int state = intent.getIntExtra(BluetoothAdapter.EXTRA_STATE, mBluetoothAdapter.ERROR);
-
-                switch(state){
-                    case BluetoothAdapter.STATE_OFF:
-                        break;
-                    case BluetoothAdapter.STATE_TURNING_OFF:
-                        break;
-                    case BluetoothAdapter.STATE_ON:
-                        break;
-                    case BluetoothAdapter.STATE_TURNING_ON:
-                        break;
-                }
-            }
-        }
-    };
-
     public void OnRadioButtonBluetoothClicked(View view)
     {
         RadioButton http = findViewById(R.id.radioButtonHTTP);
         RadioButton udp = findViewById(R.id.radioButtonUDP);
         RadioButton tcp = findViewById(R.id.radioButtonTCP);
-
-        if(http.isChecked() || udp.isChecked() || tcp.isChecked())
-        {
-            spinner.setAdapter(null);
-        }
+        RadioButton bt = findViewById(R.id.radioButtonBluetooth);
 
         http.setChecked(false);
         udp.setChecked(false);
         tcp.setChecked(false);
 
-        if(!mBluetoothAdapter.isEnabled())
-        {
-            Intent enableBTIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
-            startActivity(enableBTIntent);
-
-            IntentFilter BTIntent = new IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED);
-            registerReceiver(mBroadcastReceiver1, BTIntent);
-        }
+        startActivity(new Intent(getApplicationContext(), BluetoothActivity.class));
     }
 
-    private BroadcastReceiver mBroadcastReceiver3 = new BroadcastReceiver() {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            final String action = intent.getAction();
-
-            if (action.equals(BluetoothDevice.ACTION_FOUND)){
-                BluetoothDevice device = intent.getParcelableExtra (BluetoothDevice.EXTRA_DEVICE);
-
-                if(device.getName().startsWith("ON"))
-                {
-                    listDevices.add(device.getName() + " " + device.getAddress());
-                    mBTDevices.add(device);
-                }
-
-                spinner.setAdapter(new ArrayAdapter<String>(MainActivity.this,android.R.layout.simple_dropdown_item_1line,listDevices));
-            }
-        }
-    };
-
-    public void discoverBluetoothDevices() {
-
-        if(mBluetoothAdapter.isDiscovering()){
-            mBluetoothAdapter.cancelDiscovery();
-
-            //check BT permissions in manifest
-            checkBTPermissions();
-
-            mBluetoothAdapter.startDiscovery();
-            IntentFilter discoverDevicesIntent = new IntentFilter(BluetoothDevice.ACTION_FOUND);
-            registerReceiver(mBroadcastReceiver3, discoverDevicesIntent);
-        }
-        if(!mBluetoothAdapter.isDiscovering()){
-
-            //check BT permissions in manifest
-            checkBTPermissions();
-
-            mBluetoothAdapter.startDiscovery();
-            IntentFilter discoverDevicesIntent = new IntentFilter(BluetoothDevice.ACTION_FOUND);
-            registerReceiver(mBroadcastReceiver3, discoverDevicesIntent);
-        }
-    }
-
-    private void checkBTPermissions() {
-        if(Build.VERSION.SDK_INT > Build.VERSION_CODES.LOLLIPOP){
-            int permissionCheck = this.checkSelfPermission("Manifest.permission.ACCESS_FINE_LOCATION");
-            permissionCheck += this.checkSelfPermission("Manifest.permission.ACCESS_COARSE_LOCATION");
-            if (permissionCheck != 0) {
-
-                this.requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION}, 1001); //Any number
-            }
-        }
-    }
-
-    private BluetoothSocket createBluetoothSocket(BluetoothDevice device) throws IOException {
-        try {
-            final Method m = device.getClass().getMethod("createInsecureRfcommSocketToServiceRecord", UUID.class);
-            return (BluetoothSocket) m.invoke(device, BTMODULEUUID);
-        } catch (Exception e) {
-        }
-        return  device.createRfcommSocketToServiceRecord(BTMODULEUUID);
-    }
-
-    public void connectToBluetoothDevice(BluetoothDevice device)
-    {
-        try {
-            mBTSocket = createBluetoothSocket(device);
-        } catch (IOException e) {
-            Toast.makeText(getBaseContext(), "Socket creation failed", Toast.LENGTH_SHORT).show();
-        }
-
-        try {
-
-            if(mBTSocket.isConnected())
-            {
-                mBTSocket.close();
-            }
-            mBTSocket.connect();
-        } catch (IOException e) {
-            try {
-                mBTSocket.close();
-            } catch (IOException e2) {
-                Toast.makeText(getBaseContext(), "Socket creation failed", Toast.LENGTH_SHORT).show();
-            }
-        }
-
-        try {
-            mmInStream = mBTSocket.getInputStream();
-            mmOutStream = mBTSocket.getOutputStream();
-
-            Toast.makeText(this, "Connected to " + device.getName(), Toast.LENGTH_SHORT).show();
-
-        } catch (IOException e) { }
-    }
-
-    public void readBluetoothSerial()
-    {
-        int bytes;
-        while (true) {
-            try {
-                bytes = mmInStream.available();
-                if(bytes != 0) {
-                    SystemClock.sleep(100);
-                    bytes = mmInStream.available();
-                    BTbuffer = new byte[bytes];
-                    mmInStream.read(BTbuffer, 0, bytes);
-                    break;
-                }
-            } catch (IOException e) {
-                e.printStackTrace();
-                break;
-            }
-        }
-    }
-
-    public void writeBluetoothSerial(byte[] input)
-    {
-        try {
-            mmOutStream.write(input);
-        } catch (IOException e) { }
-    }
 }

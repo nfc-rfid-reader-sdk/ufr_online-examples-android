@@ -1,39 +1,39 @@
 <resources>
     <string name="app_name">NFC card Block Read</string>
-	<string name="title_activity_main">NFC card Block Read 3.0</string>
-	<string name="site_url">www.d-logic.net/nfc-rfid-reader-sdk/</string>
+    <string name="title_activity_main">NFC card Block Read 3.0</string>
+    <string name="site_url">www.d-logic.net/nfc-rfid-reader-sdk/</string>
 
     <string name="default_value_block_addr">0</string>
     <string name="default_value_eb_key">FFFFFFFFFFFF</string>
 
-	<string-array name="light_signal_modes">
-		<item>None</item>
-		<item>Light mode 1</item>
-		<item>Light mode 2</item>
-		<item>Light mode 3</item>
-		<item>Light mode 4</item>
-	</string-array>
+    <string-array name="light_signal_modes">
+        <item>None</item>
+        <item>Light mode 1</item>
+        <item>Light mode 2</item>
+        <item>Light mode 3</item>
+        <item>Light mode 4</item>
+    </string-array>
 
-	<string-array name="beep_signal_modes">
-		<item>None</item>
-		<item>Beep mode 1</item>
-		<item>Beep mode 2</item>
-		<item>Beep mode 3</item>
-		<item>Beep mode 4</item>
-		<item>Beep mode 5</item>
-	</string-array>
+    <string-array name="beep_signal_modes">
+        <item>None</item>
+        <item>Beep mode 1</item>
+        <item>Beep mode 2</item>
+        <item>Beep mode 3</item>
+        <item>Beep mode 4</item>
+        <item>Beep mode 5</item>
+    </string-array>
 
-	<string-array name="authentication_mode_names">
-		<item>Authent1 A keys</item>
-		<item>Authent1 B keys</item>
-	</string-array>
+    <string-array name="authentication_mode_names">
+        <item>Authent1 A keys</item>
+        <item>Authent1 B keys</item>
+    </string-array>
 
-	<integer-array name="authentication_mode_values">
-		<item>96</item>
-		<item>97</item>
-	</integer-array>
+    <integer-array name="authentication_mode_values">
+        <item>96</item>
+        <item>97</item>
+    </integer-array>
 
-	<string name="txt_block_addr">Block Addr:</string>
+    <string name="txt_block_addr">Block Addr:</string>
     <string name="txt_device_type">Device type:</string>
     <string name="txt_light_signal_mode">Light signal mode:</string>
     <string name="txt_beep_signal_mode">Beep signal mode:</string>
@@ -43,11 +43,11 @@
     <string name="txt_card_uid">CARD UID:</string>
     <string name="txt_block_data">BLOCK DATA:</string>
 
-	<string name="txt_btn_read_device_type">READ\nDEVICE\nTYPE</string>
-	<string name="txt_btn_emit_ui_signal">EMIT UI\nSIGNAL</string>
-	<string name="txt_btn_get_card_id">GET\nCARD ID</string>
-	<string name="txt_btn_read_block">READ\nBLOCK</string>
-	<string name="txt_btn_write_block">WRITE\nBLOCK</string>
-	<string name="txt_btn_enter_sleep">ENTER\nSLEEP</string>
-	<string name="txt_btn_leave_sleep">LEAVE\nSLEEP</string>
+    <string name="txt_btn_read_device_type">READ\nDEVICE\nTYPE</string>
+    <string name="txt_btn_emit_ui_signal">EMIT UI\nSIGNAL</string>
+    <string name="txt_btn_get_card_id">GET\nCARD ID</string>
+    <string name="txt_btn_read_block">READ\nBLOCK</string>
+    <string name="txt_btn_write_block">WRITE\nBLOCK</string>
+    <string name="txt_btn_enter_sleep">ENTER\nSLEEP</string>
+    <string name="txt_btn_leave_sleep">LEAVE\nSLEEP</string>
 </resources>
