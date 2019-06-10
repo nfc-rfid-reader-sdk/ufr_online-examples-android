@@ -25,13 +25,18 @@ import java.lang.reflect.Array;
 
 import static com.dlogic.ufronlinenfcreader.MainActivity.Abort;
 import static com.dlogic.ufronlinenfcreader.MainActivity.CmdResponse;
+import static com.dlogic.ufronlinenfcreader.MainActivity.beepByte;
+import static com.dlogic.ufronlinenfcreader.MainActivity.beepSpinner;
 import static com.dlogic.ufronlinenfcreader.MainActivity.bytesToHex;
+import static com.dlogic.ufronlinenfcreader.MainActivity.cmdBuffer;
 import static com.dlogic.ufronlinenfcreader.MainActivity.cmdText;
 import static com.dlogic.ufronlinenfcreader.MainActivity.eraseDelimiters;
 import static com.dlogic.ufronlinenfcreader.MainActivity.hexStringToByteArray;
 import static com.dlogic.ufronlinenfcreader.MainActivity.ip_text;
 import static com.dlogic.ufronlinenfcreader.MainActivity.isCommand;
 import static com.dlogic.ufronlinenfcreader.MainActivity.isLight;
+import static com.dlogic.ufronlinenfcreader.MainActivity.lightByte;
+import static com.dlogic.ufronlinenfcreader.MainActivity.lightSpinner;
 import static com.dlogic.ufronlinenfcreader.MainActivity.resp;
 import static com.dlogic.ufronlinenfcreader.MainActivity.response;
 import static com.dlogic.ufronlinenfcreader.MainActivity.server_address;
@@ -156,22 +161,9 @@ public class HTTP extends AsyncTask<String, Void, String> {
     @Override
     protected void onPreExecute()
     {
-        spinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-
-            public void onItemSelected(AdapterView<?> parent, View view, int pos, long id) {
-                String temp_ip = parent.getItemAtPosition(pos).toString();
-                int whitespace = temp_ip.indexOf(' ');
-                server_address = temp_ip.substring(0, whitespace).trim();
-                ip_text.setText("");
-            }
-
-            public void onNothingSelected(AdapterView<?> parent) {
-                String temp_ip = parent.getItemAtPosition(0).toString();
-                int whitespace = temp_ip.indexOf(' ');
-                server_address = temp_ip.substring(0, whitespace).trim();
-                ip_text.setText("");
-            }
-        });
+        String temp_ip = spinner.getSelectedItem().toString();
+        int whitespace = temp_ip.indexOf(' ');
+        server_address = temp_ip.substring(0, whitespace);
 
         String manual_ip = ip_text.getText().toString().trim();
 
@@ -187,7 +179,40 @@ public class HTTP extends AsyncTask<String, Void, String> {
 
         if(isLight == true)
         {
-            cmdStr = "5526AA000305E6";
+            byte[] HttpUISignalBuffer;
+            beepSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+
+                public void onItemSelected(AdapterView<?> parent, View view, int pos, long id) {
+                    beepByte = (byte) ((byte)pos + (byte)1);
+                }
+
+                public void onNothingSelected(AdapterView<?> parent) {
+                    beepByte = 1;
+                }
+            });
+
+            lightSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+
+                public void onItemSelected(AdapterView<?> parent, View view, int pos, long id) {
+                    lightByte = (byte) ((byte)pos + (byte)1);
+                }
+
+                public void onNothingSelected(AdapterView<?> parent) {
+                    lightByte = 1;
+                }
+            });
+
+            HttpUISignalBuffer = new byte[]{0x55, 0x26, (byte)0xAA, 0x00, lightByte, beepByte, 0x00};
+            byte checksum = 0;
+
+            for(int i = 0; i < 6; i++)
+            {
+                checksum ^= HttpUISignalBuffer[i];
+            }
+            checksum += 0x07;
+
+            HttpUISignalBuffer = new byte[]{0x55, 0x26, (byte)0xAA, 0x00, lightByte, beepByte, checksum};
+            cmdStr = bytesToHex(HttpUISignalBuffer);
         }
         else if(isCommand == true)
         {

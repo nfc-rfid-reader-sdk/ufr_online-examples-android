@@ -23,7 +23,9 @@ import java.util.List;
 import static com.dlogic.ufronlinenfcreader.MainActivity.Abort;
 import static com.dlogic.ufronlinenfcreader.MainActivity.bytesToHex;
 import static com.dlogic.ufronlinenfcreader.MainActivity.context;
+import static com.dlogic.ufronlinenfcreader.MainActivity.ip_text;
 import static com.dlogic.ufronlinenfcreader.MainActivity.resp;
+import static com.dlogic.ufronlinenfcreader.MainActivity.scanProgress;
 import static com.dlogic.ufronlinenfcreader.MainActivity.server_address;
 import static com.dlogic.ufronlinenfcreader.MainActivity.spinner;
 
@@ -102,7 +104,7 @@ public class Broadcast extends AsyncTask<String, Void, String> {
         } catch (Exception ex) { }
 
         String[] ipAddresses = temp.split(",");
-        String[] serialNumbers = temp_serialNum.split(",");
+        final String[] serialNumbers = temp_serialNum.split(",");
         temp = "";
         temp_serialNum = "";
         List<String> list = new ArrayList<String>();
@@ -132,21 +134,11 @@ public class Broadcast extends AsyncTask<String, Void, String> {
         spinner.setAdapter(dataAdapter);
         spinner.setSelection(0);
 
-        spinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+        String temp_ip = spinner.getSelectedItem().toString();
+        int whitespace = temp_ip.indexOf(' ');
+        server_address = temp_ip.substring(0, whitespace);
 
-            public void onItemSelected(AdapterView<?> parent, View view, int pos, long id) {
-                String temp_ip = parent.getItemAtPosition(pos).toString();
-                int whitespace = temp_ip.indexOf(' ');
-                server_address = temp_ip.substring(0, whitespace);
-            }
-
-            public void onNothingSelected(AdapterView<?> parent) {
-                String temp_ip = parent.getItemAtPosition(0).toString();
-                int whitespace = temp_ip.indexOf(' ');
-                server_address = temp_ip.substring(0, whitespace);
-            }
-        });
-
+        scanProgress.setVisibility(View.GONE);
     }
 
     @Override

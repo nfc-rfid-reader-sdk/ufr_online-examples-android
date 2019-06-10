@@ -64,9 +64,25 @@
             android:id="@+id/radioButtonBluetooth"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Bluetooth"
             android:buttonTint="#8fc546"
+            android:text="Bluetooth"
             android:onClick="OnRadioButtonBluetoothClicked"/>
+
+        <TextView
+            android:id="@+id/appVersionLabel"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:inputType="none"
+            android:text="Ver 1.0"
+            android:textStyle="normal"
+            android:textSize="12sp"
+            android:layout_marginTop="0dp"
+            android:layout_marginBottom="0dp"
+            android:gravity="center_horizontal"
+            android:textColor="#8fc546"
+            android:layout_marginLeft="13dp"
+            android:layout_marginRight="5dp"/>
 
     </LinearLayout>
 
@@ -116,9 +132,9 @@
             android:id="@+id/btnScan"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:background="@drawable/button_scan_pattern"
+            android:background="@drawable/button_pattern"
             android:text="SCAN"
-            android:textColor="#FFFFFF"
+            android:textColor="@drawable/button_text_color"
             android:textSize="12sp"
             android:gravity="center"
             android:scaleType="centerInside"
@@ -145,7 +161,7 @@
             android:layout_height="wrap_content"
             android:layout_gravity="center_horizontal"
             android:inputType="none"
-            android:text="Manual IP input :"
+            android:text="Manual input:"
             android:textStyle="normal"
             android:textSize="12sp"
             android:layout_marginTop="0dp"
@@ -165,7 +181,7 @@
             android:enabled="true"
             android:focusable="true"
             android:gravity="center"
-            android:hint="IP address"
+            android:hint="IP or MAC address"
             android:inputType="text"
             android:nextFocusDown="@+id/ebKey"
             android:singleLine="true"
@@ -217,6 +233,98 @@
         </LinearLayout>
 
         <Button
+            android:id="@+id/btnConnect"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@drawable/button_pattern"
+            android:text="CONNECT"
+            android:textSize="12sp"
+            android:textColor="@drawable/button_text_color"
+            android:gravity="center"
+            android:scaleType="centerInside"
+            android:layout_marginRight="5dp"
+            android:onClick="OnConnectClicked"
+            />
+    </LinearLayout>
+
+    <LinearLayout
+        android:orientation="horizontal"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="5dp"
+        android:padding="0dp">
+
+        <LinearLayout
+            android:orientation="vertical"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="5dp"
+            android:padding="0dp">
+
+            <TextView
+                android:id="@+id/labelBeep"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_horizontal"
+                android:inputType="none"
+                android:text="Beep signal:"
+                android:textStyle="normal"
+                android:textSize="12sp"
+                android:layout_marginTop="0dp"
+                android:layout_marginBottom="0dp"
+                android:gravity="left"
+                android:textColor="#8fc546"
+                android:layout_marginLeft="13dp"
+                android:layout_marginRight="5dp"/>
+
+            <Spinner
+                android:id="@+id/beepSignalSpinner"
+                android:layout_width="129dp"
+                android:layout_height="40dp"
+                android:layout_marginLeft="5dp"
+                android:layout_marginRight="5dp"
+                android:background="@drawable/beepspinner"
+                android:gravity="center"
+                android:inputType="none"
+                />
+        </LinearLayout>
+
+        <LinearLayout
+            android:orientation="vertical"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="5dp"
+            android:padding="0dp">
+
+            <TextView
+                android:id="@+id/labelLight"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_horizontal"
+                android:inputType="none"
+                android:text="Light signal:"
+                android:textStyle="normal"
+                android:textSize="12sp"
+                android:layout_marginTop="0dp"
+                android:layout_marginBottom="0dp"
+                android:gravity="left"
+                android:textColor="#8fc546"
+                android:layout_marginLeft="13dp"
+                android:layout_marginRight="5dp"/>
+
+            <Spinner
+                android:layout_width="129dp"
+                android:layout_height="40dp"
+                android:id="@+id/lightSignalSpinner"
+                android:background="@drawable/beepspinner"
+                android:layout_marginLeft="5dp"
+                android:inputType="none"
+                android:layout_marginRight="5dp"
+                android:gravity="center"
+                />
+        </LinearLayout>
+
+        <Button
             android:id="@+id/btnLight"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -228,6 +336,7 @@
             android:scaleType="centerInside"
             android:layout_marginRight="5dp"
             android:onClick="onLightClicked"/>
+
     </LinearLayout>
 
     <LinearLayout
@@ -379,11 +488,17 @@
 
     </LinearLayout>
 
-    <TextView
-        android:id="@+id/textViewCmdResponse"
+    <LinearLayout
+        android:orientation="vertical"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_gravity="center_horizontal"
+        android:padding="1dp">
+
+    <TextView
+        android:id="@+id/textViewCmdResponse"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="left"
         android:inputType="none"
         android:text=""
         android:textSize="12sp"
@@ -394,6 +509,16 @@
         android:layout_marginLeft="15dp"
         android:layout_marginRight="15dp"
         />
+
+        <ProgressBar
+            android:id="@+id/progressBar"
+            style="?android:attr/progressBarStyle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="30dp"
+            android:visibility="invisible"/>
+
+    </LinearLayout>
 
 </LinearLayout>
 
