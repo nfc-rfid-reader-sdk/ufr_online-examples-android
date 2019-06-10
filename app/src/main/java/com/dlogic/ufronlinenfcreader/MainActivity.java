@@ -2,6 +2,8 @@ package com.dlogic.ufronlinenfcreader;
 
 import android.Manifest;
 import android.app.Activity;
+import android.app.DownloadManager;
+import android.app.DownloadManager.Request;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
@@ -39,20 +41,37 @@ import android.widget.Toast;
 
 import org.apache.http.client.methods.HttpPost;
 
+import java.io.BufferedReader;
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.io.OutputStreamWriter;
 import java.lang.reflect.Method;
+import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
+import java.net.ProtocolException;
+import java.net.URL;
+import java.net.URLConnection;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.ListIterator;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
+import javax.net.ssl.HttpsURLConnection;
+
 import static android.widget.Toast.makeText;
+import static org.apache.http.protocol.HTTP.USER_AGENT;
+import static org.apache.http.protocol.HTTP.UTF_8;
 
 public class MainActivity extends Activity {
 
@@ -314,8 +333,8 @@ public class MainActivity extends Activity {
         return sBuilder.toString();
     }
 
-    public void OnScanClicked(View view)
-    {
+    public void OnScanClicked(View view){
+
         scanProgress.setVisibility(view.VISIBLE);
 
         RadioButton bt = findViewById(R.id.radioButtonBluetooth);

@@ -238,7 +238,7 @@
             android:layout_height="wrap_content"
             android:background="@drawable/button_pattern"
             android:text="CONNECT"
-            android:textSize="12sp"
+            android:textSize="10sp"
             android:textColor="@drawable/button_text_color"
             android:gravity="center"
             android:scaleType="centerInside"
@@ -284,7 +284,7 @@
                 android:layout_marginLeft="5dp"
                 android:layout_marginRight="5dp"
                 android:background="@drawable/beepspinner"
-                android:gravity="center"
+                android:gravity="left"
                 android:inputType="none"
                 />
         </LinearLayout>
@@ -320,7 +320,7 @@
                 android:layout_marginLeft="5dp"
                 android:inputType="none"
                 android:layout_marginRight="5dp"
-                android:gravity="center"
+                android:gravity="left"
                 />
         </LinearLayout>
 
