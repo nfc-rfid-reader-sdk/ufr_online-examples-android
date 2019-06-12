@@ -706,6 +706,7 @@ public class MainActivity extends Activity {
     public void OnButtonGetUIDClick(View view)
     {
         RadioButton bt = findViewById(R.id.radioButtonBluetooth);
+        RadioButton ble = findViewById(R.id.radioButtonBLE);
 
         if(bt.isChecked())
         {
@@ -713,6 +714,39 @@ public class MainActivity extends Activity {
             byte[] byteArray1 = {0x55, 0x2C, (byte) 0xAA, 0x00, 0x00, 0x00, (byte) 0xDA};
             if(mConnectedThread != null)
                 mConnectedThread.write(byteArray1);
+        }
+        else if(ble.isChecked())
+        {
+            byte[] GET_UID = {0x55, 0x2C, (byte) 0xAA, 0x00, 0x00, 0x00, (byte) 0xDA};
+
+            ble_port_write(GET_UID);
+
+            try
+            {
+
+                byte[] resp = ble_port_read(18);
+                String readMessage = "";
+
+                if(resp[0] == (byte)0xDE)
+                {
+                    if(resp[1]==0x2C)
+                    {
+                        byte uid[] = new byte[10];
+
+                        System.arraycopy(resp, 7, uid, 0, resp[5]);
+                        readMessage += toHexadecimal(uid, (int) resp[5]);
+                    }
+                }
+                else {
+                    if(resp[1]==0x08)
+                    {
+                        readMessage = "NO CARD";
+                    }
+                }
+
+                response.setText(readMessage);
+            }
+            catch (Exception e){};
         }
         else
         {
@@ -809,6 +843,8 @@ public class MainActivity extends Activity {
     public void onSendCommandClicked(View view)
     {
         RadioButton bt = findViewById(R.id.radioButtonBluetooth);
+        RadioButton ble = findViewById(R.id.radioButtonBLE);
+
         byte[] BT_CMDbuffer;
 
         if(bt.isChecked())
@@ -844,6 +880,39 @@ public class MainActivity extends Activity {
 
             if(mConnectedThread != null)
                 mConnectedThread.write(BT_CMDbuffer);
+        }
+        else if(ble.isChecked())
+        {
+            String cmdStr = cmdText.getText().toString().trim();
+            cmdStr = eraseDelimiters(cmdStr);
+
+            if(cmdStr.contains("xx") || cmdStr.contains("xX") || cmdStr.contains("Xx") || cmdStr.contains("XX"))
+            {
+                byte crc = 0;
+                int cmd_length = cmdStr.length() / 2;
+                byte[] calculated_crc = new byte[cmd_length];
+
+                byte[] temp_buffer = hexStringToByteArray(cmdStr.substring(0, cmdStr.length() - 2));
+
+                for(int i = 0; i < temp_buffer.length; i++)
+                {
+                    crc ^= temp_buffer[i];
+                }
+
+                crc += 0x07;
+                calculated_crc[temp_buffer.length] = crc;
+                System.arraycopy(temp_buffer,0,calculated_crc,0, temp_buffer.length);
+
+                BT_CMDbuffer = hexStringToByteArray(bytesToHex(calculated_crc));
+            }
+            else
+            {
+                BT_CMDbuffer = hexStringToByteArray(cmdStr);
+            }
+
+            ble_port_write(BT_CMDbuffer);
+
+            CmdResponse.setText(bytesToHex(ble_port_read(256)));
         }
         else
         {
