@@ -48,7 +48,7 @@
             android:id="@+id/radioButtonTCP"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="TCP/IP"
+            android:text="TCP"
             android:buttonTint="#8fc546"
             android:onClick="OnRadioButtonTCPClicked"/>
 
@@ -61,28 +61,36 @@
             android:onClick="OnRadioButtonUDPClicked"/>
 
         <RadioButton
-            android:id="@+id/radioButtonBluetooth"
+        android:id="@+id/radioButtonBluetooth"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:buttonTint="#8fc546"
+        android:text="BT"
+        android:onClick="OnRadioButtonBluetoothClicked"/>
+
+        <RadioButton
+            android:id="@+id/radioButtonBLE"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:buttonTint="#8fc546"
-            android:text="Bluetooth"
-            android:onClick="OnRadioButtonBluetoothClicked"/>
+            android:text="BLE"
+            android:onClick="OnRadioButtonBLEClicked"/>
 
         <TextView
             android:id="@+id/appVersionLabel"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_gravity="center_horizontal"
-            android:inputType="none"
-            android:text="Ver 1.0"
-            android:textStyle="normal"
-            android:textSize="12sp"
+            android:layout_marginLeft="13dp"
             android:layout_marginTop="0dp"
+            android:layout_marginRight="5dp"
             android:layout_marginBottom="0dp"
             android:gravity="center_horizontal"
+            android:inputType="none"
+            android:text="Ver 1.1"
             android:textColor="#8fc546"
-            android:layout_marginLeft="13dp"
-            android:layout_marginRight="5dp"/>
+            android:textSize="12sp"
+            android:textStyle="normal" />
 
     </LinearLayout>
 

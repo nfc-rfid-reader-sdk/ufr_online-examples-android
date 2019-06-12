@@ -2,79 +2,82 @@ package com.dlogic.ufronlinenfcreader;
 
 import android.Manifest;
 import android.app.Activity;
-import android.app.DownloadManager;
-import android.app.DownloadManager.Request;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
+import android.bluetooth.BluetoothManager;
 import android.bluetooth.BluetoothSocket;
+import android.bluetooth.le.BluetoothLeScanner;
+import android.bluetooth.le.ScanCallback;
+import android.bluetooth.le.ScanResult;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
-import android.graphics.Canvas;
 import android.graphics.Color;
-import android.graphics.ColorFilter;
-import android.graphics.drawable.Drawable;
-import android.graphics.drawable.GradientDrawable;
+import android.media.VolumeShaper;
+import android.os.AsyncTask;
 import android.os.Build;
 import android.os.CountDownTimer;
 import android.os.Handler;
+import android.os.HandlerThread;
+import android.os.Looper;
 import android.os.SystemClock;
-import android.support.v4.app.ActivityCompat;
+import android.provider.MediaStore;
 import android.support.v4.content.ContextCompat;
-import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
-import android.text.InputType;
 import android.util.Log;
+import android.view.LayoutInflater;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
+import android.widget.BaseAdapter;
 import android.widget.Button;
 import android.widget.EditText;
-import android.widget.ListView;
 import android.widget.ProgressBar;
 import android.widget.RadioButton;
 import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
-
 import org.apache.http.client.methods.HttpPost;
-
-import java.io.BufferedReader;
-import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.io.OutputStream;
-import java.io.OutputStreamWriter;
 import java.lang.reflect.Method;
-import java.net.HttpURLConnection;
-import java.net.MalformedURLException;
-import java.net.ProtocolException;
-import java.net.URL;
-import java.net.URLConnection;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.ListIterator;
-import java.util.Map;
-import java.util.Set;
+import java.util.Scanner;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.UUID;
-
-import javax.net.ssl.HttpsURLConnection;
-
+import si.inova.neatle.Neatle;
+import si.inova.neatle.monitor.ConnectionMonitor;
+import si.inova.neatle.operation.Operation;
+import si.inova.neatle.operation.OperationResults;
+import si.inova.neatle.operation.SimpleOperationObserver;
+import si.inova.neatle.scan.ScanBuilder;
+import si.inova.neatle.source.ByteArrayInputSource;
 import static android.widget.Toast.makeText;
-import static org.apache.http.protocol.HTTP.USER_AGENT;
-import static org.apache.http.protocol.HTTP.UTF_8;
+
 
 public class MainActivity extends Activity {
 
+    public String BLE_DEVICE_NAME = "";
+    public String BLE_MAC_ADDRESS = "";
+    private static BluetoothDevice device;
+    private static ConnectionMonitor connectionMonitor = null;
+    private static Context global_context;
+    private static boolean finishedWrite = false;
+    private static int write_bytes_done = 0;
+    private static final UUID serviceToWrite = UUID.fromString("e7f9840b-d767-4169-a3d0-a83b083669df");
+    private static final UUID characteristicToWrite = UUID.fromString("8bdc835c-10fe-407f-afb0-b21926f068a7");
+    private static boolean finishedRead = false;
+    private static byte data[];
+    BluetoothManager btManager;
+    BluetoothLeScanner btScanner;
+    //-------------------------------------------------------------------
     static Context context;
     public static String resp = "";
     public static String server_address = "192.168.0.101";
@@ -123,6 +126,9 @@ public class MainActivity extends Activity {
     private ConnectedThread mConnectedThread;
     private BluetoothSocket mBTSocket = null;
     //--------------------------------------------------------------------
+
+    Button btnScan;
+
     private final static char[] hexArray = "0123456789ABCDEF".toCharArray();
     public static String toHexadecimal(byte[] bytes, int len) {
         char[] hexChars = new char[len * 2];
@@ -139,7 +145,9 @@ public class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        global_context = getApplicationContext();
         context = this;
+        btnScan = findViewById(R.id.btnScan);
         spinner = findViewById(R.id.IpSpinner);
         response = findViewById(R.id.txtUID);
         port_text = findViewById(R.id.portText);
@@ -167,22 +175,114 @@ public class MainActivity extends Activity {
         lightSpinner.setSelection(0);
 
         listDevices = new ArrayList<String>();
-
         mBTDevices = new ArrayList<>();
-
         mBTArrayAdapter = new ArrayAdapter<String>(this,android.R.layout.simple_list_item_1);
         mBTAdapter = BluetoothAdapter.getDefaultAdapter();
+
+        btManager = (BluetoothManager)getSystemService(Context.BLUETOOTH_SERVICE);
+        btScanner = mBTAdapter.getBluetoothLeScanner();
+
         spinner.setAdapter(mBTArrayAdapter);
+
+        checkBTPermissions();
+
+        btnScan.setOnClickListener(new View.OnClickListener() {
+
+            @Override
+            public void onClick(View v) {
+
+                RadioButton bt = findViewById(R.id.radioButtonBluetooth);
+                RadioButton ble = findViewById(R.id.radioButtonBLE);
+
+                if(bt.isChecked())
+                {
+                    try {
+                        mBTSocket.close();
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+
+                    if(global_context.checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED ||
+                       global_context.checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED)
+                    {
+                        Toast.makeText(global_context, "You have to allow access to device's location for BT scan", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+
+                    if (!mBTAdapter.isEnabled()) {
+                        Toast.makeText(getApplicationContext(), "You have to turn Bluetooth ON", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    else
+                    {
+                        listDevices.clear();
+                        spinner.setAdapter(null);
+                        discoverBluetoothDevices();
+                    }
+                }
+                else if(ble.isChecked())
+                {
+                    ble_port_close();
+
+                    if(global_context.checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED ||
+                        global_context.checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED)
+                    {
+                        Toast.makeText(global_context, "You have to allow access to device's location for BLE scan", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+
+                    if (!mBTAdapter.isEnabled()) {
+                        Toast.makeText(getApplicationContext(), "You have to turn Bluetooth ON", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    else
+                    {
+                        startScanning();
+                        scanProgress.setVisibility(View.GONE);
+                    }
+                }
+                else
+                {
+                    scanProgress.setVisibility(View.VISIBLE);
+
+                    try
+                    {
+                        if(Abort == true)
+                        {
+                            broadcastOperation.cancel(false);
+                        }
+                        else
+                        {
+                            broadcastOperation = new Broadcast();
+                            broadcastOperation.execute();
+                        }
+                        Abort = true;
+                    }
+                    catch (Exception e)
+                    {
+                        e.printStackTrace();
+                    }
+                }
+            }
+        });
 
         spinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
 
             RadioButton bt = findViewById(R.id.radioButtonBluetooth);
+            RadioButton ble = findViewById(R.id.radioButtonBLE);
 
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int pos, long id) {
 
                 if(bt.isChecked())
                 {
+
+                    try {
+                        mBTSocket.close();
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+
                     String info = parent.getItemAtPosition(pos).toString();
                     final String address = info.substring(info.length() - 17);
                     final String name = info.substring(0,info.length() - 17);
@@ -191,6 +291,18 @@ public class MainActivity extends Activity {
                     btnCONNECT.setText("CONNECT");
                     btnCONNECT.setTextColor(Color.BLACK);
                     btnCONNECT.setEnabled(true);
+                }
+                else if(ble.isChecked())
+                {
+                    ble_port_close();
+                    btnCONNECT.setBackground(ContextCompat.getDrawable(context, R.drawable.button_pattern));
+                    btnCONNECT.setText("CONNECT");
+                    btnCONNECT.setTextColor(Color.BLACK);
+                    btnCONNECT.setEnabled(true);
+                    BLE_MAC_ADDRESS = parent.getItemAtPosition(pos).toString();
+                    BLE_DEVICE_NAME = BLE_MAC_ADDRESS.substring(0 , BLE_MAC_ADDRESS.indexOf(' ')).trim();
+                    BLE_MAC_ADDRESS = BLE_MAC_ADDRESS.substring(BLE_MAC_ADDRESS.indexOf(' ')).trim();
+                    ip_text.setText(BLE_MAC_ADDRESS);
                 }
                 else
                 {
@@ -204,13 +316,14 @@ public class MainActivity extends Activity {
                     btnCONNECT.setEnabled(false);
                 }
             }
+
             @Override
             public void onNothingSelected(AdapterView<?> parent) {
             }
         });
 
-        if(ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED)
-            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_COARSE_LOCATION}, 1);
+        /*if(ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED)
+            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_COARSE_LOCATION}, 1);*/
 
         mHandler = new Handler(){
             public void handleMessage(android.os.Message msg){
@@ -263,6 +376,7 @@ public class MainActivity extends Activity {
                         btnCONNECT.setBackground(ContextCompat.getDrawable(context, R.drawable.button_pattern));
                         btnCONNECT.setText("CONNECT");
                         btnCONNECT.setTextColor(Color.BLACK);
+                        btnCONNECT.setEnabled(true);
                         //makeText(getApplicationContext(), "Connection failed, please try again", Toast.LENGTH_SHORT).show();
                     }
                 }
@@ -333,41 +447,6 @@ public class MainActivity extends Activity {
         return sBuilder.toString();
     }
 
-    public void OnScanClicked(View view){
-
-        scanProgress.setVisibility(view.VISIBLE);
-
-        RadioButton bt = findViewById(R.id.radioButtonBluetooth);
-
-        if(bt.isChecked())
-        {
-            spinner.setAdapter(null);
-            discoverBluetoothDevices();
-            scanProgress.setVisibility(View.GONE);
-        }
-        else
-        {
-            try
-            {
-                if(Abort == true)
-                {
-                    broadcastOperation.cancel(false);
-                }
-                else
-                {
-                    broadcastOperation = new Broadcast();
-                    broadcastOperation.execute();
-                }
-                Abort = true;
-            }
-            catch (Exception e)
-            {
-                e.printStackTrace();
-            }
-        }
-
-    }
-
     public void OnRadioButtonTCPClicked(View view)
     {
         mBTAdapter.disable();
@@ -376,16 +455,22 @@ public class MainActivity extends Activity {
         uidTV.setText("");
         RadioButton http = findViewById(R.id.radioButtonHTTP);
         RadioButton udp = findViewById(R.id.radioButtonUDP);
-        RadioButton tcp = findViewById(R.id.radioButtonTCP);
+        RadioButton ble = findViewById(R.id.radioButtonBLE);
         RadioButton bt = findViewById(R.id.radioButtonBluetooth);
 
-        if(bt.isChecked())
+        if(ble.isChecked())
+        {
+            ble_port_close();
+        }
+
+        if(bt.isChecked() || ble.isChecked())
         {
             ip_text.setText("");
             spinner.setAdapter(null);
             btnCONNECT.setBackground(ContextCompat.getDrawable(context, R.drawable.button_pattern));
             btnCONNECT.setText("CONNECT");
             btnCONNECT.setTextColor(Color.BLACK);
+            btnCONNECT.setEnabled(true);
         }
 
         EditText portNumber = findViewById(R.id.portText);
@@ -395,8 +480,8 @@ public class MainActivity extends Activity {
 
         udp.setChecked(false);
         http.setChecked(false);
-        tcp.setChecked(true);
         bt.setChecked(false);
+        ble.setChecked(false);
     }
 
     public void OnRadioButtonUDPClicked(View view)
@@ -406,17 +491,23 @@ public class MainActivity extends Activity {
         TextView uidTV = findViewById(R.id.txtUID);
         uidTV.setText("");
         RadioButton http = findViewById(R.id.radioButtonHTTP);
-        RadioButton udp = findViewById(R.id.radioButtonUDP);
+        RadioButton ble = findViewById(R.id.radioButtonBLE);
         RadioButton tcp = findViewById(R.id.radioButtonTCP);
         RadioButton bt = findViewById(R.id.radioButtonBluetooth);
 
-        if(bt.isChecked())
+        if(ble.isChecked())
+        {
+            ble_port_close();
+        }
+
+        if(bt.isChecked() || ble.isChecked())
         {
             ip_text.setText("");
             spinner.setAdapter(null);
             btnCONNECT.setBackground(ContextCompat.getDrawable(context, R.drawable.button_pattern));
             btnCONNECT.setText("CONNECT");
             btnCONNECT.setTextColor(Color.BLACK);
+            btnCONNECT.setEnabled(true);
         }
 
         EditText portNumber = findViewById(R.id.portText);
@@ -424,7 +515,7 @@ public class MainActivity extends Activity {
         portNumber.setText("8881");
         portNumber.setInputType(1);
 
-        udp.setChecked(true);
+        ble.setChecked(false);
         http.setChecked(false);
         tcp.setChecked(false);
         bt.setChecked(false);
@@ -436,18 +527,24 @@ public class MainActivity extends Activity {
 
         TextView uidTV = findViewById(R.id.txtUID);
         uidTV.setText("");
-        RadioButton http = findViewById(R.id.radioButtonHTTP);
+        RadioButton ble = findViewById(R.id.radioButtonBLE);
         RadioButton udp = findViewById(R.id.radioButtonUDP);
         RadioButton tcp = findViewById(R.id.radioButtonTCP);
         RadioButton bt = findViewById(R.id.radioButtonBluetooth);
 
-        if(bt.isChecked())
+        if(ble.isChecked())
+        {
+            ble_port_close();
+        }
+
+        if(bt.isChecked() || ble.isChecked())
         {
             ip_text.setText("");
             spinner.setAdapter(null);
             btnCONNECT.setBackground(ContextCompat.getDrawable(context, R.drawable.button_pattern));
             btnCONNECT.setText("CONNECT");
             btnCONNECT.setTextColor(Color.BLACK);
+            btnCONNECT.setEnabled(true);
         }
 
         EditText portNumber = findViewById(R.id.portText);
@@ -456,9 +553,9 @@ public class MainActivity extends Activity {
         portNumber.setInputType(0);
 
         udp.setChecked(false);
-        http.setChecked(true);
         tcp.setChecked(false);
         bt.setChecked(false);
+        ble.setChecked(false);
     }
 
     public void OnRadioButtonBluetoothClicked(View view)
@@ -468,22 +565,73 @@ public class MainActivity extends Activity {
             startActivityForResult(enableBtIntent, REQUEST_ENABLE_BT);
         }
 
+        if (this.checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[]{Manifest.permission.ACCESS_COARSE_LOCATION}, 1);
+        }
+
         RadioButton http = findViewById(R.id.radioButtonHTTP);
         RadioButton udp = findViewById(R.id.radioButtonUDP);
         RadioButton tcp = findViewById(R.id.radioButtonTCP);
+        RadioButton ble = findViewById(R.id.radioButtonBLE);
 
-        if(http.isChecked() || udp.isChecked() || tcp.isChecked())
+        if(ble.isChecked())
         {
-            spinner.setAdapter(null);
-            btnCONNECT.setBackground(ContextCompat.getDrawable(context, R.drawable.button_pattern));
-            btnCONNECT.setText("CONNECT");
-            btnCONNECT.setTextColor(Color.BLACK);
-            ip_text.setText("");
+            ble_port_close();
+        }
+
+        spinner.setAdapter(null);
+
+        btnCONNECT.setBackground(ContextCompat.getDrawable(context, R.drawable.button_pattern));
+        btnCONNECT.setText("CONNECT");
+        btnCONNECT.setTextColor(Color.BLACK);
+        btnCONNECT.setEnabled(true);
+        ip_text.setText("");
+
+        http.setChecked(false);
+        udp.setChecked(false);
+        tcp.setChecked(false);
+        ble.setChecked(false);
+    }
+
+    public void OnRadioButtonBLEClicked(View view)
+    {
+        RadioButton http = findViewById(R.id.radioButtonHTTP);
+        RadioButton udp = findViewById(R.id.radioButtonUDP);
+        RadioButton tcp = findViewById(R.id.radioButtonTCP);
+        RadioButton bt = findViewById(R.id.radioButtonBluetooth);
+
+        if(http.isChecked() || udp.isChecked() || tcp. isChecked() || bt.isChecked())
+        {
+            ble_port_close();
         }
 
         http.setChecked(false);
         udp.setChecked(false);
         tcp.setChecked(false);
+        bt.setChecked(false);
+
+        spinner.setAdapter(null);
+
+        btnCONNECT.setBackground(ContextCompat.getDrawable(context, R.drawable.button_pattern));
+        btnCONNECT.setText("CONNECT");
+        btnCONNECT.setTextColor(Color.BLACK);
+        btnCONNECT.setEnabled(true);
+        ip_text.setText("");
+
+        if (!getPackageManager().hasSystemFeature(PackageManager.FEATURE_BLUETOOTH_LE)) {
+            Toast.makeText(this, "BLE is not supported on this device", Toast.LENGTH_SHORT).show();
+            finish();
+            return;
+        }
+
+        if (this.checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[]{Manifest.permission.ACCESS_COARSE_LOCATION}, 1);
+        }
+
+        if (!mBTAdapter.isEnabled()) {
+            Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
+            startActivityForResult(enableBtIntent, REQUEST_ENABLE_BT);
+        }
     }
 
     public void DoOperation()
@@ -575,6 +723,7 @@ public class MainActivity extends Activity {
     public void onLightClicked(View view)
     {
         RadioButton bt = findViewById(R.id.radioButtonBluetooth);
+        RadioButton ble = findViewById(R.id.radioButtonBLE);
 
         if(bt.isChecked())
         {
@@ -612,6 +761,43 @@ public class MainActivity extends Activity {
             byteArray1 = new byte[]{0x55, 0x26, (byte)0xAA, 0x00, lightByte, beepByte, checksum};
             if(mConnectedThread != null)
                 mConnectedThread.write(byteArray1);
+        }
+        else if(ble.isChecked())
+        {
+            beepSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+
+                public void onItemSelected(AdapterView<?> parent, View view, int pos, long id) {
+                    beepByte = (byte) ((byte)pos + (byte)1);
+                }
+
+                public void onNothingSelected(AdapterView<?> parent) {
+                    beepByte = 1;
+                }
+            });
+
+            lightSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+
+                public void onItemSelected(AdapterView<?> parent, View view, int pos, long id) {
+                    lightByte = (byte) ((byte)pos + (byte)1);
+                }
+
+                public void onNothingSelected(AdapterView<?> parent) {
+                    lightByte = 1;
+                }
+            });
+
+            byte[] byteArray1 = new byte[]{0x55, 0x26, (byte)0xAA, 0x00, lightByte, beepByte, 0x00};
+            byte checksum = 0;
+
+            for(int i = 0; i < 6; i++)
+            {
+                checksum ^= byteArray1[i];
+            }
+            checksum += 0x07;
+
+            byteArray1 = new byte[]{0x55, 0x26, (byte)0xAA, 0x00, lightByte, beepByte, checksum};
+
+            ble_port_write(byteArray1);
         }
         else {
             isLight = true;
@@ -672,95 +858,139 @@ public class MainActivity extends Activity {
 
     public void OnConnectClicked(View view)
     {
-        btnCONNECT.setBackground(ContextCompat.getDrawable(context, R.drawable.button_not_pressed));
+        btnCONNECT.setBackground(ContextCompat.getDrawable(context, R.drawable.button_pattern));
         btnCONNECT.setText("CONNECT");
         btnCONNECT.setTextColor(Color.BLACK);
+        btnCONNECT.setEnabled(true);
+
         RadioButton bt = findViewById(R.id.radioButtonBluetooth);
+        RadioButton ble = findViewById(R.id.radioButtonBLE);
 
-        if(!bt.isChecked())
-            return;
+        if(bt.isChecked()) {
 
-        if(!mBTAdapter.isEnabled()) {
-            makeText(getBaseContext(), "Bluetooth not on", Toast.LENGTH_SHORT).show();
-            return;
-        }
+            if (!mBTAdapter.isEnabled()) {
+                makeText(getBaseContext(), "Bluetooth not on", Toast.LENGTH_SHORT).show();
+                return;
+            }
 
-        toastForConnect = makeText(this, "Connecting ... Please wait", Toast.LENGTH_SHORT);
+            try {
+                mBTSocket.close();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
 
-        CountDownTimer toastCountDown;
-        toastCountDown = new CountDownTimer(12000, 1000 /*Tick duration*/) {
-            public void onTick(long millisUntilFinished) {
-                if(isBTConnected)
-                {
+            toastForConnect = makeText(this, "Connecting ... Please wait", Toast.LENGTH_SHORT);
+
+            CountDownTimer toastCountDown;
+            toastCountDown = new CountDownTimer(12000, 1000 /*Tick duration*/) {
+                public void onTick(long millisUntilFinished) {
+                    if (isBTConnected) {
+                        toastForConnect.cancel();
+                    }
+                    toastForConnect.show();
+                }
+
+                public void onFinish() {
                     toastForConnect.cancel();
                 }
-                toastForConnect.show();
+            };
+
+            // Show the toast and starts the countdown
+            toastForConnect.show();
+            toastCountDown.start();
+            String info = "";
+
+            try {
+                info = spinner.getSelectedItem().toString();
+            } catch (Exception ex) {
             }
-            public void onFinish() {
-                toastForConnect.cancel();
+
+            String name_info = "";
+            try {
+                name_info = info.substring(0, info.length() - 17);
+            } catch (Exception ex) {
             }
-        };
 
-        // Show the toast and starts the countdown
-        toastForConnect.show();
-        toastCountDown.start();
-        String info = "";
+            final String name = name_info;
 
-        try
-        {
-            info = spinner.getSelectedItem().toString();
-        }
-        catch (Exception ex){}
+            new Thread() {
+                public void run() {
+                    boolean fail = false;
+                    BluetoothDevice device = null;
 
-        String name_info = "";
-        try
-        {
-            name_info = info.substring(0,info.length() - 17);
-        }
-        catch (Exception ex){}
-
-        final String name = name_info;
-
-        new Thread()
-        {
-            public void run() {
-                boolean fail = false;
-                BluetoothDevice device = null;
-
-                try
-                {
-                    device = mBTAdapter.getRemoteDevice(ip_text.getText().toString().trim());
-                }
-                catch (Exception ex){return;}
-
-                try {
-                    mBTSocket = createBluetoothSocket(device);
-                } catch (IOException e) {
-                    fail = true;
-                    makeText(getBaseContext(), "Socket creation failed", Toast.LENGTH_SHORT).show();
-                }
-                try {
-                    mBTSocket.connect();
-                } catch (Exception e) {
                     try {
-                        fail = true;
-                        mBTSocket.close();
-                        mHandler.obtainMessage(CONNECTING_STATUS, -1, -1)
-                                .sendToTarget();
-                    } catch (Exception e2) {
+                        device = mBTAdapter.getRemoteDevice(ip_text.getText().toString().trim());
+                    } catch (Exception ex) {
                         return;
-                        //makeText(getBaseContext(), "Socket creation failed", Toast.LENGTH_SHORT).show();
+                    }
+
+                    try {
+                        mBTSocket = createBluetoothSocket(device);
+                    } catch (IOException e) {
+                        fail = true;
+                        makeText(getBaseContext(), "Socket creation failed", Toast.LENGTH_SHORT).show();
+                    }
+                    try {
+                        mBTSocket.connect();
+                    } catch (Exception e) {
+                        try {
+                            fail = true;
+                            mBTSocket.close();
+                            mHandler.obtainMessage(CONNECTING_STATUS, -1, -1)
+                                    .sendToTarget();
+                        } catch (Exception e2) {
+                            return;
+                            //makeText(getBaseContext(), "Socket creation failed", Toast.LENGTH_SHORT).show();
+                        }
+                    }
+                    if (fail == false) {
+                        mConnectedThread = new ConnectedThread(mBTSocket);
+                        mConnectedThread.start();
+
+                        mHandler.obtainMessage(CONNECTING_STATUS, 1, -1, name)
+                                .sendToTarget();
                     }
                 }
-                if(fail == false) {
-                    mConnectedThread = new ConnectedThread(mBTSocket);
-                    mConnectedThread.start();
+            }.start();
 
-                    mHandler.obtainMessage(CONNECTING_STATUS, 1, -1, name)
-                            .sendToTarget();
+        }
+        else if(ble.isChecked())
+        {
+            ble_port_close();
+
+            if(ble_port_open(BLE_MAC_ADDRESS) == 1)
+            {
+                Toast.makeText(this, "Connected to uFR Online " + BLE_DEVICE_NAME, Toast.LENGTH_SHORT).show();
+                btnCONNECT.setBackground(ContextCompat.getDrawable(context, R.drawable.button_pressed));
+                btnCONNECT.setText("Connected");
+                btnCONNECT.setTextColor(Color.WHITE);
+                btnCONNECT.setEnabled(false);
+            }
+            else
+            {
+                try {
+                    Thread.sleep(500);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+
+                if(ble_port_open(BLE_MAC_ADDRESS) == 1)
+                {
+                    Toast.makeText(this, "Connected to uFR Online " + BLE_DEVICE_NAME, Toast.LENGTH_SHORT).show();
+                    btnCONNECT.setBackground(ContextCompat.getDrawable(context, R.drawable.button_pressed));
+                    btnCONNECT.setText("Connected");
+                    btnCONNECT.setTextColor(Color.WHITE);
+                    btnCONNECT.setEnabled(false);
+                }
+                else {
+                    Toast.makeText(this, "Connection failed, please try again", Toast.LENGTH_SHORT).show();
+                    btnCONNECT.setBackground(ContextCompat.getDrawable(context, R.drawable.button_pattern));
+                    btnCONNECT.setText("CONNECT");
+                    btnCONNECT.setTextColor(Color.BLACK);
+                    btnCONNECT.setEnabled(true);
                 }
             }
-        }.start();
+        }
     }
 
     private BroadcastReceiver broadcastReceive = new BroadcastReceiver() {
@@ -794,7 +1024,6 @@ public class MainActivity extends Activity {
             int permissionCheck = this.checkSelfPermission("Manifest.permission.ACCESS_FINE_LOCATION");
             permissionCheck += this.checkSelfPermission("Manifest.permission.ACCESS_COARSE_LOCATION");
             if (permissionCheck != 0) {
-
                 this.requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION}, 1001); //Any number
             }
         }
@@ -811,6 +1040,7 @@ public class MainActivity extends Activity {
             mBTAdapter.startDiscovery();
             IntentFilter discoverDevicesIntent = new IntentFilter(BluetoothDevice.ACTION_FOUND);
             registerReceiver(broadcastReceive, discoverDevicesIntent);
+
         }
         if(!mBTAdapter.isDiscovering()){
 
@@ -853,10 +1083,10 @@ public class MainActivity extends Activity {
         private final OutputStream mmOutStream;
 
         public ConnectedThread(BluetoothSocket socket) {
+
             mmSocket = socket;
             InputStream tmpIn = null;
             OutputStream tmpOut = null;
-
 
             try {
                 tmpIn = socket.getInputStream();
@@ -901,6 +1131,228 @@ public class MainActivity extends Activity {
             try {
                 mmSocket.close();
             } catch (IOException e) { }
+        }
+    }
+
+    //------------------------------------------------------------------------
+    //Bluetooth Low Energy
+    //------------------------------------------------------------------------
+
+    // Device scan callback.
+    private ScanCallback leScanCallback = new ScanCallback() {
+        @Override
+        public void onScanResult(int callbackType, ScanResult result) {
+
+            try
+            {
+                if(result.getDevice().getName().startsWith("ON"))
+                {
+                    listDevices.add(result.getDevice().getName() + " " + result.getDevice().getAddress());
+                    stopScanning();
+                }
+            }
+            catch (Exception ex){}
+
+            spinner.setAdapter(new ArrayAdapter<String>(MainActivity.this,android.R.layout.simple_dropdown_item_1line,listDevices));
+        }
+    };
+
+    public void startScanning() {
+        listDevices.clear();
+        spinner.setAdapter(null);
+        AsyncTask.execute(new Runnable() {
+            @Override
+            public void run() {
+                try
+                {
+                    btScanner.startScan(leScanCallback);
+                }
+                catch (Exception ex){}
+            }
+        });
+    }
+
+    public void stopScanning() {
+        AsyncTask.execute(new Runnable() {
+            @Override
+            public void run() {
+
+                try
+                {
+                    btScanner.stopScan(leScanCallback);
+                }
+                catch (Exception ex){}
+            }
+        });
+    }
+
+    public static int ble_port_open(String mac) {
+
+        if (Neatle.isMacValid(mac)) {
+            if (connectionMonitor != null) {
+                if (connectionMonitor.getConnection().isConnecting()) {
+                    connectionMonitor.getConnection().disconnect();
+
+                }
+            }
+
+            connectionMonitor = Neatle.createConnectionMonitor(global_context, Neatle.getDevice(mac));
+
+            connectionMonitor.setKeepAlive(true);
+            connectionMonitor.start();
+
+            connectionMonitor.getConnection().connect();
+
+            int state = connectionMonitor.getConnection().getState();
+            long startTime = System.currentTimeMillis();
+
+            if (state == 2) {
+                device = connectionMonitor.getDevice();
+                return 1;
+            }
+            else
+            {
+                return 0;
+            }
+        } else {
+
+            return 0;
+        }
+
+    }
+
+    public static int ble_port_close() {
+
+        if (connectionMonitor != null) {
+            connectionMonitor.getConnection().disconnect();
+            connectionMonitor.stop();
+            connectionMonitor=null;
+        }
+        return 1;
+    }
+
+    public static int ble_port_write(final byte data[]) {
+        if(connectionMonitor !=null) {
+            if (connectionMonitor.getConnection().getState() == 2) {
+                write_bytes_done = 0;
+                HandlerThread handlerThread1 = new HandlerThread("MyHandlerThread1");
+                handlerThread1.start();
+                Looper looper1 = handlerThread1.getLooper();
+                Handler handler1 = new Handler(looper1);
+
+                handler1.post(new Runnable() {
+
+                    @Override
+                    public void run() {
+                        ByteArrayInputSource inputSource = new ByteArrayInputSource(data);
+
+                        Operation operation = Neatle.createOperationBuilder(global_context)
+                                .write(serviceToWrite, characteristicToWrite, inputSource)
+                                .onFinished(new SimpleOperationObserver() {
+                                    @Override
+                                    public void onOperationFinished(Operation op, OperationResults results) {
+                                        if (results.wasSuccessful()) {
+                                            finishedWrite = true;
+                                            write_bytes_done = data.length;
+
+                                        } else {
+                                            finishedWrite = true;
+                                        }
+                                    }
+                                })
+                                .build(device);
+                        operation.execute();
+                    }
+                });
+
+                while (finishedWrite == false) {
+                    try {
+                        Thread.sleep(1);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                }
+
+                finishedWrite = false;
+                return data.length;
+            } else {
+                return 0;
+            }
+        }
+        else
+        {
+            return 0;
+        }
+    }
+
+
+    public static byte[] ble_port_read(int number_of_bytes) {
+        if(connectionMonitor!=null) {
+            if (connectionMonitor.getConnection().getState() == 2) {
+
+                byte len[] = new byte[6];
+                len[0] = 'L';
+                len[1] = 'E';
+                len[2] = 'N';
+                len[3] = '=';
+                len[5] = (byte) (number_of_bytes & 0xFF);
+                len[4] = (byte) ((number_of_bytes >> 8) & 0xFF);
+                ble_port_write(len);
+
+                data = null;
+                HandlerThread handlerThread1 = new HandlerThread("MyHandlerThread1");
+                handlerThread1.start();
+                Looper looper1 = handlerThread1.getLooper();
+                Handler handler1 = new Handler(looper1);
+
+                handler1.post(new Runnable() {
+
+                    @Override
+                    public void run() {
+                    si.inova.neatle.operation.Operation operation = Neatle.createOperationBuilder(global_context)
+                                .read(serviceToWrite, characteristicToWrite)
+                                .onFinished(new SimpleOperationObserver() {
+                                    @Override
+                                    public void onOperationFinished( si.inova.neatle.operation.Operation op, OperationResults results) {
+                                        if (results.wasSuccessful()) {
+                                            //Log.e(TAG, "READ onOperationFinished: " +results.getResult(characteristicToWrite).getValueAsString());
+
+                                            data = results.getResult(characteristicToWrite).getValue();
+
+                                            finishedRead = true;
+                                        } else {
+
+                                            //Log.e(TAG, "onOperationFinished: READFING ERROR");
+                                            finishedRead = true;
+                                        }
+                                    }
+                                })
+                                .build(device);
+                        operation.execute();
+                    }
+                });
+
+                while (finishedRead == false) {
+                    try {
+                        Thread.sleep(1);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                }
+
+                finishedRead = false;
+
+
+                return data;
+            } else {
+                data = null;
+                return data;
+            }
+        }
+        else
+        {
+            data = null;
+            return data;
         }
     }
 }
