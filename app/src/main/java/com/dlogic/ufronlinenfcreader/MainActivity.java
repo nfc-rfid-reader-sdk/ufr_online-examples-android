@@ -7,32 +7,22 @@ import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothManager;
 import android.bluetooth.BluetoothSocket;
 import android.bluetooth.le.BluetoothLeScanner;
-import android.bluetooth.le.ScanCallback;
-import android.bluetooth.le.ScanResult;
-import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
-import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
-import android.media.VolumeShaper;
-import android.os.AsyncTask;
 import android.os.Build;
 import android.os.CountDownTimer;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Looper;
 import android.os.SystemClock;
-import android.provider.MediaStore;
 import android.support.v4.content.ContextCompat;
 import android.os.Bundle;
 import android.util.Log;
-import android.view.LayoutInflater;
 import android.view.View;
-import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
-import android.widget.BaseAdapter;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ProgressBar;
@@ -46,37 +36,33 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
-import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Scanner;
-import java.util.Timer;
-import java.util.TimerTask;
+import java.util.Set;
 import java.util.UUID;
 import si.inova.neatle.Neatle;
 import si.inova.neatle.monitor.ConnectionMonitor;
 import si.inova.neatle.operation.Operation;
 import si.inova.neatle.operation.OperationResults;
 import si.inova.neatle.operation.SimpleOperationObserver;
-import si.inova.neatle.scan.ScanBuilder;
 import si.inova.neatle.source.ByteArrayInputSource;
 import static android.widget.Toast.makeText;
 
 
 public class MainActivity extends Activity {
 
+    private static int write_bytes_done = 0;
+    public boolean btSerialIsConnected = false;
+    public boolean btBLEIsConnected = false;
     public String BLE_DEVICE_NAME = "";
     public String BLE_MAC_ADDRESS = "";
     private static BluetoothDevice device;
     private static ConnectionMonitor connectionMonitor = null;
-    private static Context global_context;
+    public static Context global_context;
     private static boolean finishedWrite = false;
-    private static int write_bytes_done = 0;
     private static final UUID serviceToWrite = UUID.fromString("e7f9840b-d767-4169-a3d0-a83b083669df");
     private static final UUID characteristicToWrite = UUID.fromString("8bdc835c-10fe-407f-afb0-b21926f068a7");
     private static boolean finishedRead = false;
     private static byte data[];
-    BluetoothManager btManager;
-    BluetoothLeScanner btScanner;
     //-------------------------------------------------------------------
     static Context context;
     public static String resp = "";
@@ -112,10 +98,8 @@ public class MainActivity extends Activity {
     Toast toastForConnect;
     public static ProgressBar scanProgress;
     private Handler mHandler;
-    public ArrayList<BluetoothDevice> mBTDevices = new ArrayList<>();
     List<String> listDevices;
     private BluetoothAdapter mBTAdapter;
-    private ArrayAdapter<String> mBTArrayAdapter;
     private static final UUID BTMODULEUUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
     public static boolean BT_GET_UID = false;
     public static boolean BT_SEND_CMD = false;
@@ -175,14 +159,7 @@ public class MainActivity extends Activity {
         lightSpinner.setSelection(0);
 
         listDevices = new ArrayList<String>();
-        mBTDevices = new ArrayList<>();
-        mBTArrayAdapter = new ArrayAdapter<String>(this,android.R.layout.simple_list_item_1);
         mBTAdapter = BluetoothAdapter.getDefaultAdapter();
-
-        btManager = (BluetoothManager)getSystemService(Context.BLUETOOTH_SERVICE);
-        btScanner = mBTAdapter.getBluetoothLeScanner();
-
-        spinner.setAdapter(mBTArrayAdapter);
 
         checkBTPermissions();
 
@@ -191,16 +168,21 @@ public class MainActivity extends Activity {
             @Override
             public void onClick(View v) {
 
+                btnCONNECT.setBackground(ContextCompat.getDrawable(context, R.drawable.button_pattern));
+                btnCONNECT.setText("CONNECT");
+                btnCONNECT.setTextColor(Color.BLACK);
+                btnCONNECT.setEnabled(true);
+
                 RadioButton bt = findViewById(R.id.radioButtonBluetooth);
                 RadioButton ble = findViewById(R.id.radioButtonBLE);
 
                 if(bt.isChecked())
                 {
-                    try {
+                    /*try {
                         mBTSocket.close();
                     } catch (Exception e) {
                         e.printStackTrace();
-                    }
+                    }*/
 
                     if(global_context.checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED ||
                        global_context.checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED)
@@ -215,14 +197,12 @@ public class MainActivity extends Activity {
                     }
                     else
                     {
-                        listDevices.clear();
-                        spinner.setAdapter(null);
-                        discoverBluetoothDevices();
+                        discoverBluetoothDevices("_BT");
                     }
                 }
                 else if(ble.isChecked())
                 {
-                    ble_port_close();
+                   // ble_port_close();
 
                     if(global_context.checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED ||
                         global_context.checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED)
@@ -237,8 +217,7 @@ public class MainActivity extends Activity {
                     }
                     else
                     {
-                        startScanning();
-                        scanProgress.setVisibility(View.GONE);
+                        discoverBluetoothDevices("_BLE");
                     }
                 }
                 else
@@ -276,7 +255,6 @@ public class MainActivity extends Activity {
 
                 if(bt.isChecked())
                 {
-
                     try {
                         mBTSocket.close();
                     } catch (Exception e) {
@@ -322,9 +300,6 @@ public class MainActivity extends Activity {
             }
         });
 
-        /*if(ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED)
-            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_COARSE_LOCATION}, 1);*/
-
         mHandler = new Handler(){
             public void handleMessage(android.os.Message msg){
                 if(msg.what == MESSAGE_READ){
@@ -369,15 +344,15 @@ public class MainActivity extends Activity {
                         btnCONNECT.setBackground(ContextCompat.getDrawable(context, R.drawable.button_pressed));
                         btnCONNECT.setText("Connected");
                         btnCONNECT.setTextColor(Color.WHITE);
-                        btnCONNECT.setEnabled(false);
-                        //mBTArrayAdapter.clear();
+                        btnCONNECT.setEnabled(true);
+                        btSerialIsConnected = true;
                     }
                     else {
                         btnCONNECT.setBackground(ContextCompat.getDrawable(context, R.drawable.button_pattern));
                         btnCONNECT.setText("CONNECT");
                         btnCONNECT.setTextColor(Color.BLACK);
                         btnCONNECT.setEnabled(true);
-                        //makeText(getApplicationContext(), "Connection failed, please try again", Toast.LENGTH_SHORT).show();
+                        btSerialIsConnected = false;
                     }
                 }
             }
@@ -441,16 +416,21 @@ public class MainActivity extends Activity {
 
     public static String bytesToHex(byte[] byteArray)
     {
-        StringBuilder sBuilder = new StringBuilder(byteArray.length * 2);
-        for(byte b: byteArray)
-            sBuilder.append(String.format("%02X", b & 0xff));
-        return sBuilder.toString();
+        try
+        {
+            StringBuilder sBuilder = new StringBuilder(byteArray.length * 2);
+            for(byte b: byteArray)
+                sBuilder.append(String.format("%02X", b & 0xff));
+            return sBuilder.toString();
+        }
+        catch (Exception ex)
+        {
+            return "";
+        }
     }
 
     public void OnRadioButtonTCPClicked(View view)
     {
-        mBTAdapter.disable();
-
         TextView uidTV = findViewById(R.id.txtUID);
         uidTV.setText("");
         RadioButton http = findViewById(R.id.radioButtonHTTP);
@@ -467,6 +447,7 @@ public class MainActivity extends Activity {
         {
             ip_text.setText("");
             spinner.setAdapter(null);
+            listDevices.clear();
             btnCONNECT.setBackground(ContextCompat.getDrawable(context, R.drawable.button_pattern));
             btnCONNECT.setText("CONNECT");
             btnCONNECT.setTextColor(Color.BLACK);
@@ -486,8 +467,6 @@ public class MainActivity extends Activity {
 
     public void OnRadioButtonUDPClicked(View view)
     {
-        mBTAdapter.disable();
-
         TextView uidTV = findViewById(R.id.txtUID);
         uidTV.setText("");
         RadioButton http = findViewById(R.id.radioButtonHTTP);
@@ -504,6 +483,7 @@ public class MainActivity extends Activity {
         {
             ip_text.setText("");
             spinner.setAdapter(null);
+            listDevices.clear();
             btnCONNECT.setBackground(ContextCompat.getDrawable(context, R.drawable.button_pattern));
             btnCONNECT.setText("CONNECT");
             btnCONNECT.setTextColor(Color.BLACK);
@@ -523,8 +503,6 @@ public class MainActivity extends Activity {
 
     public void OnRadioButtonHTTPClicked(View view)
     {
-        mBTAdapter.disable();
-
         TextView uidTV = findViewById(R.id.txtUID);
         uidTV.setText("");
         RadioButton ble = findViewById(R.id.radioButtonBLE);
@@ -541,6 +519,7 @@ public class MainActivity extends Activity {
         {
             ip_text.setText("");
             spinner.setAdapter(null);
+            listDevices.clear();
             btnCONNECT.setBackground(ContextCompat.getDrawable(context, R.drawable.button_pattern));
             btnCONNECT.setText("CONNECT");
             btnCONNECT.setTextColor(Color.BLACK);
@@ -560,15 +539,6 @@ public class MainActivity extends Activity {
 
     public void OnRadioButtonBluetoothClicked(View view)
     {
-        if (!mBTAdapter.isEnabled()) {
-            Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
-            startActivityForResult(enableBtIntent, REQUEST_ENABLE_BT);
-        }
-
-        if (this.checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            requestPermissions(new String[]{Manifest.permission.ACCESS_COARSE_LOCATION}, 1);
-        }
-
         RadioButton http = findViewById(R.id.radioButtonHTTP);
         RadioButton udp = findViewById(R.id.radioButtonUDP);
         RadioButton tcp = findViewById(R.id.radioButtonTCP);
@@ -577,6 +547,7 @@ public class MainActivity extends Activity {
         if(ble.isChecked())
         {
             ble_port_close();
+            listDevices.clear();
         }
 
         spinner.setAdapter(null);
@@ -591,6 +562,15 @@ public class MainActivity extends Activity {
         udp.setChecked(false);
         tcp.setChecked(false);
         ble.setChecked(false);
+
+        if (!mBTAdapter.isEnabled()) {
+            Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
+            startActivityForResult(enableBtIntent, REQUEST_ENABLE_BT);
+        }
+
+        if (this.checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            this.requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION}, 1001);
+        }
     }
 
     public void OnRadioButtonBLEClicked(View view)
@@ -603,6 +583,7 @@ public class MainActivity extends Activity {
         if(http.isChecked() || udp.isChecked() || tcp. isChecked() || bt.isChecked())
         {
             ble_port_close();
+            listDevices.clear();
         }
 
         http.setChecked(false);
@@ -624,14 +605,15 @@ public class MainActivity extends Activity {
             return;
         }
 
-        if (this.checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            requestPermissions(new String[]{Manifest.permission.ACCESS_COARSE_LOCATION}, 1);
-        }
-
         if (!mBTAdapter.isEnabled()) {
             Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
             startActivityForResult(enableBtIntent, REQUEST_ENABLE_BT);
         }
+
+        if (this.checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            this.requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION}, 1001);
+        }
+
     }
 
     public void DoOperation()
@@ -927,10 +909,39 @@ public class MainActivity extends Activity {
 
     public void OnConnectClicked(View view)
     {
-        btnCONNECT.setBackground(ContextCompat.getDrawable(context, R.drawable.button_pattern));
-        btnCONNECT.setText("CONNECT");
-        btnCONNECT.setTextColor(Color.BLACK);
-        btnCONNECT.setEnabled(true);
+        if(btSerialIsConnected == true)
+        {
+            try
+            {
+                if(mBTSocket.isConnected())
+                {
+                    try {
+                        mBTSocket.close();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+            catch (Exception ex){}
+
+            btnCONNECT.setBackground(ContextCompat.getDrawable(context, R.drawable.button_pattern));
+            btnCONNECT.setText("CONNECT");
+            btnCONNECT.setTextColor(Color.BLACK);
+            btnCONNECT.setEnabled(true);
+            btSerialIsConnected = false;
+            return;
+        }
+        else if(btBLEIsConnected == true)
+        {
+            ble_port_close();
+
+            btnCONNECT.setBackground(ContextCompat.getDrawable(context, R.drawable.button_pattern));
+            btnCONNECT.setText("CONNECT");
+            btnCONNECT.setTextColor(Color.BLACK);
+            btnCONNECT.setEnabled(true);
+            btBLEIsConnected = false;
+            return;
+        }
 
         RadioButton bt = findViewById(R.id.radioButtonBluetooth);
         RadioButton ble = findViewById(R.id.radioButtonBLE);
@@ -1033,7 +1044,8 @@ public class MainActivity extends Activity {
                 btnCONNECT.setBackground(ContextCompat.getDrawable(context, R.drawable.button_pressed));
                 btnCONNECT.setText("Connected");
                 btnCONNECT.setTextColor(Color.WHITE);
-                btnCONNECT.setEnabled(false);
+                btnCONNECT.setEnabled(true);
+                btBLEIsConnected = true;
             }
             else
             {
@@ -1049,7 +1061,8 @@ public class MainActivity extends Activity {
                     btnCONNECT.setBackground(ContextCompat.getDrawable(context, R.drawable.button_pressed));
                     btnCONNECT.setText("Connected");
                     btnCONNECT.setTextColor(Color.WHITE);
-                    btnCONNECT.setEnabled(false);
+                    btnCONNECT.setEnabled(true);
+                    btBLEIsConnected = true;
                 }
                 else {
                     Toast.makeText(this, "Connection failed, please try again", Toast.LENGTH_SHORT).show();
@@ -1057,36 +1070,11 @@ public class MainActivity extends Activity {
                     btnCONNECT.setText("CONNECT");
                     btnCONNECT.setTextColor(Color.BLACK);
                     btnCONNECT.setEnabled(true);
+                    btBLEIsConnected = false;
                 }
             }
         }
     }
-
-    private BroadcastReceiver broadcastReceive = new BroadcastReceiver() {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            final String action = intent.getAction();
-
-            if (action.equals(BluetoothDevice.ACTION_FOUND)){
-                BluetoothDevice device = intent.getParcelableExtra (BluetoothDevice.EXTRA_DEVICE);
-
-                try
-                {
-                    if(device.getName().startsWith("ON"))
-                    {
-                        listDevices.add(device.getName() + " " + device.getAddress());
-                        mBTDevices.add(device);
-                    }
-                }
-                catch (Exception ex){}
-            }
-
-            LinkedHashSet<String> hashSet = new LinkedHashSet<>(listDevices);
-            listWithoutDuplicates = new ArrayList<>(hashSet);
-            spinner.setAdapter(new ArrayAdapter<String>(MainActivity.this,android.R.layout.simple_dropdown_item_1line,listWithoutDuplicates));
-        }
-    };
-
 
     private void checkBTPermissions() {
         if(Build.VERSION.SDK_INT > Build.VERSION_CODES.LOLLIPOP){
@@ -1098,40 +1086,105 @@ public class MainActivity extends Activity {
         }
     }
 
-    public void discoverBluetoothDevices() {
+    public void discoverBluetoothDevices(final String suffix)
+    {
+        spinner.setAdapter(null);
+        listDevices.clear();
 
-        if(mBTAdapter.isDiscovering()){
-            mBTAdapter.cancelDiscovery();
+        BluetoothAdapter mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+        Set<BluetoothDevice> pairedDevices = mBluetoothAdapter.getBondedDevices();
 
-            //check BT permissions in manifest
-            checkBTPermissions();
-
-            mBTAdapter.startDiscovery();
-            IntentFilter discoverDevicesIntent = new IntentFilter(BluetoothDevice.ACTION_FOUND);
-            registerReceiver(broadcastReceive, discoverDevicesIntent);
-
-        }
-        if(!mBTAdapter.isDiscovering()){
-
-            //check BT permissions in manifest
-            checkBTPermissions();
-
-            mBTAdapter.startDiscovery();
-            IntentFilter discoverDevicesIntent = new IntentFilter(BluetoothDevice.ACTION_FOUND);
-            registerReceiver(broadcastReceive, discoverDevicesIntent);
-        }
-    }
-
-    @Override
-    protected void onDestroy() {
-        try
+        for(BluetoothDevice bt : pairedDevices)
         {
-            super.onDestroy();
-            unregisterReceiver(broadcastReceive);
+            try
+            {
+                if(bt.getName().startsWith("ON") && bt.getName().endsWith(suffix))
+                {
+                    listDevices.add(bt.getName() + " " + bt.getAddress());
+                }
+            }
+            catch (Exception ex){}
         }
-        catch (Exception ex){};
-    }
 
+        if(listDevices.size() > 0)
+        {
+            spinner.setAdapter(new ArrayAdapter<String>(MainActivity.this,android.R.layout.simple_dropdown_item_1line,listDevices));
+        }
+        else
+        {
+            Toast.makeText(getApplicationContext(), "No paired devices found", Toast.LENGTH_SHORT).show();
+        }
+
+        /*scanProgress.setVisibility(View.VISIBLE);
+
+        getWindow().setFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE, WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
+
+        mBTAdapter.startDiscovery();
+
+        new Thread() {
+            public void run() {
+                int counter = 0;
+                while(true)
+                {
+                    counter++;
+
+                    if(counter == 10)
+                    {
+                        mBTAdapter.cancelDiscovery();
+                        break;
+                    }
+
+                    try {
+                        Thread.sleep(1000);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+        }.start();
+
+        BroadcastReceiver mReceiver = new BroadcastReceiver() {
+            public void onReceive(Context context, Intent intent) {
+                String action = intent.getAction();
+
+                if (BluetoothDevice.ACTION_FOUND.equals(action))
+                {
+                    BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
+
+                    try
+                    {
+                        if(device.getName().startsWith("ON") && device.getName().endsWith(suffix))
+                        {
+                            listDevices.add(device.getName() + " " + device.getAddress());
+                        }
+                    }
+                    catch (Exception ex){}
+                }
+                else if(BluetoothAdapter.ACTION_DISCOVERY_FINISHED.equals(action))
+                {
+                    LinkedHashSet<String> hashSet = new LinkedHashSet<>(listDevices);
+                    listWithoutDuplicates = new ArrayList<>(hashSet);
+
+                    if(listWithoutDuplicates.size() > 0)
+                    {
+                        spinner.setAdapter(new ArrayAdapter<String>(MainActivity.this,android.R.layout.simple_dropdown_item_1line,listWithoutDuplicates));
+                    }
+                    else
+                    {
+                        spinner.setAdapter(null);
+                        Toast.makeText(getApplicationContext(), "No devices found, please try again", Toast.LENGTH_SHORT).show();
+                    }
+
+                    getWindow().clearFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
+                    scanProgress.setVisibility(View.GONE);
+                }
+            }
+        };
+
+        IntentFilter filter = new IntentFilter(BluetoothDevice.ACTION_FOUND);
+        filter.addAction(BluetoothAdapter.ACTION_DISCOVERY_FINISHED);
+        registerReceiver(mReceiver, filter);*/
+    }
 
     private BluetoothSocket createBluetoothSocket(BluetoothDevice device) throws IOException {
         try {
@@ -1206,54 +1259,6 @@ public class MainActivity extends Activity {
     //------------------------------------------------------------------------
     //Bluetooth Low Energy
     //------------------------------------------------------------------------
-
-    // Device scan callback.
-    private ScanCallback leScanCallback = new ScanCallback() {
-        @Override
-        public void onScanResult(int callbackType, ScanResult result) {
-
-            try
-            {
-                if(result.getDevice().getName().startsWith("ON"))
-                {
-                    listDevices.add(result.getDevice().getName() + " " + result.getDevice().getAddress());
-                    stopScanning();
-                }
-            }
-            catch (Exception ex){}
-
-            spinner.setAdapter(new ArrayAdapter<String>(MainActivity.this,android.R.layout.simple_dropdown_item_1line,listDevices));
-        }
-    };
-
-    public void startScanning() {
-        listDevices.clear();
-        spinner.setAdapter(null);
-        AsyncTask.execute(new Runnable() {
-            @Override
-            public void run() {
-                try
-                {
-                    btScanner.startScan(leScanCallback);
-                }
-                catch (Exception ex){}
-            }
-        });
-    }
-
-    public void stopScanning() {
-        AsyncTask.execute(new Runnable() {
-            @Override
-            public void run() {
-
-                try
-                {
-                    btScanner.stopScan(leScanCallback);
-                }
-                catch (Exception ex){}
-            }
-        });
-    }
 
     public static int ble_port_open(String mac) {
 
