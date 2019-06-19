@@ -3,7 +3,6 @@ package com.dlogic.ufronlinenfcreader;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.support.annotation.RequiresApi;
-import android.util.Log;
 import android.view.View;
 import android.widget.AdapterView;
 
@@ -21,14 +20,12 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.lang.reflect.Array;
 
 import static com.dlogic.ufronlinenfcreader.MainActivity.Abort;
 import static com.dlogic.ufronlinenfcreader.MainActivity.CmdResponse;
 import static com.dlogic.ufronlinenfcreader.MainActivity.beepByte;
 import static com.dlogic.ufronlinenfcreader.MainActivity.beepSpinner;
 import static com.dlogic.ufronlinenfcreader.MainActivity.bytesToHex;
-import static com.dlogic.ufronlinenfcreader.MainActivity.cmdBuffer;
 import static com.dlogic.ufronlinenfcreader.MainActivity.cmdText;
 import static com.dlogic.ufronlinenfcreader.MainActivity.eraseDelimiters;
 import static com.dlogic.ufronlinenfcreader.MainActivity.hexStringToByteArray;
