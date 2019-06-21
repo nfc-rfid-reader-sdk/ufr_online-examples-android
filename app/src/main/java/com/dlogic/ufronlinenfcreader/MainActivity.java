@@ -1105,6 +1105,7 @@ public class MainActivity extends Activity {
                     btnCONNECT.setTextColor(Color.WHITE);
                     btnCONNECT.setEnabled(true);
                     btBLEIsConnected = true;
+
                 }
                 else if(ble_port_open(BLE_MAC_ADDRESS) == 2){
                     Toast.makeText(this, "Connection failed, please try again", Toast.LENGTH_SHORT).show();
