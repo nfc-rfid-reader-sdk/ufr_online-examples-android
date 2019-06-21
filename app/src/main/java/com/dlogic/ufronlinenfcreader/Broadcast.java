@@ -1,10 +1,14 @@
 package com.dlogic.ufronlinenfcreader;
 
+import android.app.Activity;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.support.annotation.RequiresApi;
 import android.view.View;
+import android.view.WindowManager;
 import android.widget.ArrayAdapter;
+import android.widget.Toast;
+
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
@@ -26,6 +30,11 @@ import static com.dlogic.ufronlinenfcreader.MainActivity.server_address;
 import static com.dlogic.ufronlinenfcreader.MainActivity.spinner;
 
 public class Broadcast extends AsyncTask<String, Void, String> {
+
+    private Activity g_activity;
+    public Broadcast(Activity activity) {
+        g_activity = activity;
+    }
 
     @RequiresApi(api = Build.VERSION_CODES.N)
     @Override
@@ -125,15 +134,27 @@ public class Broadcast extends AsyncTask<String, Void, String> {
             }
         } catch (Exception ex) { }
 
-        ArrayAdapter<String> dataAdapter = new ArrayAdapter<String>(context, android.R.layout.simple_spinner_dropdown_item, list);
-        dataAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        spinner.setAdapter(dataAdapter);
-        spinner.setSelection(0);
+        try
+        {
+            if(list.size() > 0)
+            {
+                ArrayAdapter<String> dataAdapter = new ArrayAdapter<String>(context, android.R.layout.simple_spinner_dropdown_item, list);
+                dataAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+                spinner.setAdapter(dataAdapter);
+                spinner.setSelection(0);
 
-        String temp_ip = spinner.getSelectedItem().toString();
-        int whitespace = temp_ip.indexOf(' ');
-        server_address = temp_ip.substring(0, whitespace);
+                String temp_ip = spinner.getSelectedItem().toString();
+                int whitespace = temp_ip.indexOf(' ');
+                server_address = temp_ip.substring(0, whitespace);
+            }
+            else
+            {
+                Toast.makeText(context, "No devices found", Toast.LENGTH_SHORT).show();
+            }
+        }
+        catch (Exception ex){}
 
+        g_activity.getWindow().clearFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
         scanProgress.setVisibility(View.GONE);
     }
 

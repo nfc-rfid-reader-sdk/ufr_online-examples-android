@@ -184,6 +184,7 @@ public class MainActivity extends Activity {
                         if(mBTSocket.isConnected())
                         {
                             mBTSocket.close();
+                            btBLEIsConnected = false;
                             btSerialIsConnected = false;
                         }
                     } catch (Exception e) {
@@ -210,6 +211,7 @@ public class MainActivity extends Activity {
                 {
                     ble_port_close();
                     btBLEIsConnected = false;
+                    btSerialIsConnected = false;
 
                     if(global_context.checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED ||
                         global_context.checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED)
@@ -230,6 +232,7 @@ public class MainActivity extends Activity {
                 else
                 {
                     scanProgress.setVisibility(View.VISIBLE);
+                    getWindow().setFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE, WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
 
                     try
                     {
@@ -239,7 +242,7 @@ public class MainActivity extends Activity {
                         }
                         else
                         {
-                            broadcastOperation = new Broadcast();
+                            broadcastOperation = new Broadcast((Activity)context);
                             broadcastOperation.execute();
                         }
                         Abort = true;
@@ -279,6 +282,7 @@ public class MainActivity extends Activity {
                 }
                 else if(ble.isChecked())
                 {
+                    BLE_MAC_ADDRESS = "";
                     ble_port_close();
                     btnCONNECT.setBackground(ContextCompat.getDrawable(context, R.drawable.button_pattern));
                     btnCONNECT.setText("CONNECT");
@@ -304,6 +308,7 @@ public class MainActivity extends Activity {
 
             @Override
             public void onNothingSelected(AdapterView<?> parent) {
+                BLE_MAC_ADDRESS = "";
             }
         });
 
@@ -443,6 +448,8 @@ public class MainActivity extends Activity {
 
     public void OnRadioButtonTCPClicked(View view)
     {
+        port_text.setText("8881");
+        port_text.setEnabled(true);
         TextView uidTV = findViewById(R.id.txtUID);
         uidTV.setText("");
         RadioButton http = findViewById(R.id.radioButtonHTTP);
@@ -479,6 +486,8 @@ public class MainActivity extends Activity {
 
     public void OnRadioButtonUDPClicked(View view)
     {
+        port_text.setText("8881");
+        port_text.setEnabled(true);
         TextView uidTV = findViewById(R.id.txtUID);
         uidTV.setText("");
         RadioButton http = findViewById(R.id.radioButtonHTTP);
@@ -515,6 +524,8 @@ public class MainActivity extends Activity {
 
     public void OnRadioButtonHTTPClicked(View view)
     {
+        port_text.setText("80");
+        port_text.setEnabled(false);
         TextView uidTV = findViewById(R.id.txtUID);
         uidTV.setText("");
         RadioButton ble = findViewById(R.id.radioButtonBLE);
@@ -556,6 +567,9 @@ public class MainActivity extends Activity {
         RadioButton tcp = findViewById(R.id.radioButtonTCP);
         RadioButton ble = findViewById(R.id.radioButtonBLE);
 
+        port_text.setText("");
+        port_text.setEnabled(false);
+
         if(ble.isChecked())
         {
             ble_port_close();
@@ -591,6 +605,9 @@ public class MainActivity extends Activity {
         RadioButton udp = findViewById(R.id.radioButtonUDP);
         RadioButton tcp = findViewById(R.id.radioButtonTCP);
         RadioButton bt = findViewById(R.id.radioButtonBluetooth);
+
+        port_text.setText("");
+        port_text.setEnabled(false);
 
         if(http.isChecked() || udp.isChecked() || tcp. isChecked() || bt.isChecked())
         {
@@ -974,6 +991,13 @@ public class MainActivity extends Activity {
                 e.printStackTrace();
             }
 
+            if (!Neatle.isMacValid(ip_text.getText().toString().trim())) {
+                scanProgress.setVisibility(View.GONE);
+                getWindow().clearFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
+                Toast.makeText(this, "Invalid MAC address", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
             toastForConnect = makeText(this, "Connecting ... Please wait", Toast.LENGTH_SHORT);
 
             CountDownTimer toastCountDown;
@@ -1051,7 +1075,10 @@ public class MainActivity extends Activity {
         }
         else if(ble.isChecked())
         {
+            scanProgress.setVisibility(View.VISIBLE);
+            getWindow().setFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE, WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
             ble_port_close();
+            BLE_MAC_ADDRESS = ip_text.getText().toString().trim();
 
             if(ble_port_open(BLE_MAC_ADDRESS) == 1)
             {
@@ -1062,7 +1089,7 @@ public class MainActivity extends Activity {
                 btnCONNECT.setEnabled(true);
                 btBLEIsConnected = true;
             }
-            else
+            else if(ble_port_open(BLE_MAC_ADDRESS) == 2)
             {
                 try {
                     Thread.sleep(500);
@@ -1079,7 +1106,7 @@ public class MainActivity extends Activity {
                     btnCONNECT.setEnabled(true);
                     btBLEIsConnected = true;
                 }
-                else {
+                else if(ble_port_open(BLE_MAC_ADDRESS) == 2){
                     Toast.makeText(this, "Connection failed, please try again", Toast.LENGTH_SHORT).show();
                     btnCONNECT.setBackground(ContextCompat.getDrawable(context, R.drawable.button_pattern));
                     btnCONNECT.setText("CONNECT");
@@ -1195,6 +1222,7 @@ public class MainActivity extends Activity {
                         {
                             spinner.setAdapter(null);
                             Toast.makeText(getApplicationContext(), "No devices found, please try again", Toast.LENGTH_SHORT).show();
+                            ip_text.setText("");
                         }
 
                         getWindow().clearFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
@@ -1216,6 +1244,7 @@ public class MainActivity extends Activity {
             else
             {
                 Toast.makeText(getApplicationContext(), "No paired devices found", Toast.LENGTH_SHORT).show();
+                ip_text.setText("");
             }
         }
     }
@@ -1320,10 +1349,10 @@ public class MainActivity extends Activity {
             }
             else
             {
-                return 0;
+                return 2;
             }
         } else {
-
+            Toast.makeText(global_context, "Invalid MAC address", Toast.LENGTH_SHORT).show();
             return 0;
         }
 
