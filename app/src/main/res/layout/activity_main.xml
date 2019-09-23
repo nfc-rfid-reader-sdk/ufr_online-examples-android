@@ -42,7 +42,8 @@
             android:buttonTint="#8fc546"
             android:checked="true"
             android:text="HTTP"
-            android:onClick="OnRadioButtonHTTPClicked"/>
+            android:onClick="OnRadioButtonHTTPClicked"
+            android:textSize="12sp"/>
 
         <RadioButton
             android:id="@+id/radioButtonTCP"
@@ -50,7 +51,8 @@
             android:layout_height="wrap_content"
             android:text="TCP"
             android:buttonTint="#8fc546"
-            android:onClick="OnRadioButtonTCPClicked"/>
+            android:onClick="OnRadioButtonTCPClicked"
+            android:textSize="12sp"/>
 
         <RadioButton
             android:id="@+id/radioButtonUDP"
@@ -58,7 +60,8 @@
             android:layout_height="wrap_content"
             android:text="UDP"
             android:buttonTint="#8fc546"
-            android:onClick="OnRadioButtonUDPClicked"/>
+            android:onClick="OnRadioButtonUDPClicked"
+            android:textSize="12sp"/>
 
         <RadioButton
         android:id="@+id/radioButtonBluetooth"
@@ -66,7 +69,8 @@
         android:layout_height="wrap_content"
         android:buttonTint="#8fc546"
         android:text="BT"
-        android:onClick="OnRadioButtonBluetoothClicked"/>
+        android:onClick="OnRadioButtonBluetoothClicked"
+        android:textSize="12sp"/>
 
         <RadioButton
             android:id="@+id/radioButtonBLE"
@@ -74,7 +78,16 @@
             android:layout_height="wrap_content"
             android:buttonTint="#8fc546"
             android:text="BLE"
-            android:onClick="OnRadioButtonBLEClicked"/>
+            android:onClick="OnRadioButtonBLEClicked"
+            android:textSize="12sp"/>
+
+        <RadioButton
+            android:id="@+id/radioButtonWS"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:buttonTint="#8fc546"
+            android:text="WS"
+            android:textSize="12sp"/>
 
         <TextView
             android:id="@+id/appVersionLabel"
@@ -87,7 +100,7 @@
             android:layout_marginBottom="0dp"
             android:gravity="center_horizontal"
             android:inputType="none"
-            android:text="Ver 2.0"
+            android:text="Ver 2.1"
             android:textColor="#8fc546"
             android:textSize="12sp"
             android:textStyle="normal" />

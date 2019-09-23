@@ -31,14 +31,24 @@ import android.widget.RadioButton;
 import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import com.neovisionaries.ws.client.WebSocket;
+import com.neovisionaries.ws.client.WebSocketAdapter;
+import com.neovisionaries.ws.client.WebSocketException;
+import com.neovisionaries.ws.client.WebSocketFactory;
+
 import org.apache.http.client.methods.HttpPost;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.PrintWriter;
 import java.lang.reflect.Method;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import si.inova.neatle.Neatle;
@@ -47,10 +57,17 @@ import si.inova.neatle.operation.Operation;
 import si.inova.neatle.operation.OperationResults;
 import si.inova.neatle.operation.SimpleOperationObserver;
 import si.inova.neatle.source.ByteArrayInputSource;
+
 import static android.widget.Toast.makeText;
 
 
 public class MainActivity extends Activity {
+
+    WebSocketAdapter WSA = new WebSocketAdapter();
+    WebSocket webSocket = null;
+    private static final int WEBSOCKET_GETUID = 4;
+    private static final int WEBSOCKET_CONNECTION = 5;
+    private static final int WEBSOCKET_COMMAND = 6;
 
     private static int write_bytes_done = 0;
     public boolean btSerialIsConnected = false;
@@ -165,6 +182,8 @@ public class MainActivity extends Activity {
 
         checkBTPermissions();
 
+        btnCONNECT.setEnabled(false);
+
         btnScan.setOnClickListener(new View.OnClickListener() {
 
             @Override
@@ -259,6 +278,7 @@ public class MainActivity extends Activity {
 
             RadioButton bt = findViewById(R.id.radioButtonBluetooth);
             RadioButton ble = findViewById(R.id.radioButtonBLE);
+            RadioButton ws = findViewById(R.id.radioButtonWS);
 
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int pos, long id) {
@@ -293,6 +313,17 @@ public class MainActivity extends Activity {
                     BLE_MAC_ADDRESS = BLE_MAC_ADDRESS.substring(BLE_MAC_ADDRESS.indexOf(' ')).trim();
                     ip_text.setText(BLE_MAC_ADDRESS);
                 }
+                else if(ws.isChecked())
+                {
+                    String temp_ip = parent.getItemAtPosition(pos).toString();
+                    int whitespace = temp_ip.indexOf(' ');
+                    server_address = temp_ip.substring(0, whitespace).trim();
+                    ip_text.setText(server_address);
+                    btnCONNECT.setBackground(ContextCompat.getDrawable(context, R.drawable.button_pattern));
+                    btnCONNECT.setText("CONNECT");
+                    btnCONNECT.setTextColor(Color.BLACK);
+                    btnCONNECT.setEnabled(true);
+                }
                 else
                 {
                     String temp_ip = parent.getItemAtPosition(pos).toString();
@@ -312,7 +343,7 @@ public class MainActivity extends Activity {
             }
         });
 
-        mHandler = new Handler(){
+        mHandler = new Handler(Looper.getMainLooper()){
             public void handleMessage(android.os.Message msg){
                 if(msg.what == MESSAGE_READ){
 
@@ -372,8 +403,100 @@ public class MainActivity extends Activity {
                         getWindow().clearFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
                     }
                 }
+
+                if(msg.what == WEBSOCKET_CONNECTION)
+                {
+                    Toast.makeText(getApplicationContext(), "Connected to " + ip_text.getText().toString(), Toast.LENGTH_SHORT).show();
+
+                    btnCONNECT.setBackground(ContextCompat.getDrawable(context, R.drawable.button_pressed));
+                    btnCONNECT.setText("Connected");
+                    btnCONNECT.setTextColor(Color.WHITE);
+                    btnCONNECT.setEnabled(false);
+                }
+
+                if(msg.what == WEBSOCKET_GETUID)
+                {
+                    EditText uidET = findViewById(R.id.txtUID);
+
+                    String str = bytesToHex((byte[])msg.obj);
+
+                    try
+                    {
+                        if((str.substring(0, 2).equals("DE")))
+                        {
+                            String tempStr = "";
+
+                            if((str.substring(11,12)).equals("4"))
+                            {
+                                tempStr = str.substring(14, str.length()-14);
+                            }
+                            else if((str.substring(11,12)).equals("7"))
+                            {
+                                tempStr = str.substring(14, str.length()-8);
+                            }
+
+                            str = tempStr;
+                        }
+                        else if ((str.substring(0, 4).equals("EC08")))
+                        {
+                            str = "NO CARD";
+                        }
+                        else
+                        {
+                            str = "";
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        str = "";
+                        e.printStackTrace();
+                    }
+
+                    uidET.setText(str);
+                }
+
+                if(msg.what == WEBSOCKET_COMMAND)
+                {
+                    String str = bytesToHex((byte[])msg.obj);
+
+                    TextView cmdRespTV = findViewById(R.id.textViewCmdResponse);
+
+                    cmdRespTV.setText(str);
+                }
             }
         };
+
+        RadioButton RB_WebSocket = findViewById(R.id.radioButtonWS);
+        RB_WebSocket.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+
+                RadioButton http = findViewById(R.id.radioButtonHTTP);
+                RadioButton udp = findViewById(R.id.radioButtonUDP);
+                RadioButton tcp = findViewById(R.id.radioButtonTCP);
+                RadioButton bt = findViewById(R.id.radioButtonBluetooth);
+                RadioButton ble = findViewById(R.id.radioButtonBLE);
+
+                http.setChecked(false);
+                udp.setChecked(false);
+                tcp.setChecked(false);
+                bt.setChecked(false);
+                ble.setChecked(false);
+
+                if(bt.isChecked() || ble.isChecked())
+                {
+                    spinner.setAdapter(null);
+                }
+
+                port_text.setText("8881");
+                port_text.setEnabled(true);
+
+                btnCONNECT.setBackground(ContextCompat.getDrawable(context, R.drawable.button_pattern));
+                btnCONNECT.setText("CONNECT");
+                btnCONNECT.setTextColor(Color.BLACK);
+                btnCONNECT.setEnabled(true);
+            }
+        });
 
     }
 
@@ -456,13 +579,14 @@ public class MainActivity extends Activity {
         RadioButton udp = findViewById(R.id.radioButtonUDP);
         RadioButton ble = findViewById(R.id.radioButtonBLE);
         RadioButton bt = findViewById(R.id.radioButtonBluetooth);
+        RadioButton ws = findViewById(R.id.radioButtonWS);
 
         if(ble.isChecked())
         {
             ble_port_close();
         }
 
-        if(bt.isChecked() || ble.isChecked())
+        if(bt.isChecked() || ble.isChecked() || ws.isChecked())
         {
             ip_text.setText("");
             spinner.setAdapter(null);
@@ -470,7 +594,7 @@ public class MainActivity extends Activity {
             btnCONNECT.setBackground(ContextCompat.getDrawable(context, R.drawable.button_pattern));
             btnCONNECT.setText("CONNECT");
             btnCONNECT.setTextColor(Color.BLACK);
-            btnCONNECT.setEnabled(true);
+            btnCONNECT.setEnabled(false);
         }
 
         EditText portNumber = findViewById(R.id.portText);
@@ -478,6 +602,7 @@ public class MainActivity extends Activity {
         portNumber.setText("8881");
         portNumber.setInputType(1);
 
+        ws.setChecked(false);
         udp.setChecked(false);
         http.setChecked(false);
         bt.setChecked(false);
@@ -494,13 +619,14 @@ public class MainActivity extends Activity {
         RadioButton ble = findViewById(R.id.radioButtonBLE);
         RadioButton tcp = findViewById(R.id.radioButtonTCP);
         RadioButton bt = findViewById(R.id.radioButtonBluetooth);
+        RadioButton ws = findViewById(R.id.radioButtonWS);
 
         if(ble.isChecked())
         {
             ble_port_close();
         }
 
-        if(bt.isChecked() || ble.isChecked())
+        if(bt.isChecked() || ble.isChecked() || ws.isChecked())
         {
             ip_text.setText("");
             spinner.setAdapter(null);
@@ -508,7 +634,7 @@ public class MainActivity extends Activity {
             btnCONNECT.setBackground(ContextCompat.getDrawable(context, R.drawable.button_pattern));
             btnCONNECT.setText("CONNECT");
             btnCONNECT.setTextColor(Color.BLACK);
-            btnCONNECT.setEnabled(true);
+            btnCONNECT.setEnabled(false);
         }
 
         EditText portNumber = findViewById(R.id.portText);
@@ -516,6 +642,7 @@ public class MainActivity extends Activity {
         portNumber.setText("8881");
         portNumber.setInputType(1);
 
+        ws.setChecked(false);
         ble.setChecked(false);
         http.setChecked(false);
         tcp.setChecked(false);
@@ -524,6 +651,7 @@ public class MainActivity extends Activity {
 
     public void OnRadioButtonHTTPClicked(View view)
     {
+
         port_text.setText("80");
         port_text.setEnabled(false);
         TextView uidTV = findViewById(R.id.txtUID);
@@ -532,13 +660,14 @@ public class MainActivity extends Activity {
         RadioButton udp = findViewById(R.id.radioButtonUDP);
         RadioButton tcp = findViewById(R.id.radioButtonTCP);
         RadioButton bt = findViewById(R.id.radioButtonBluetooth);
+        RadioButton ws = findViewById(R.id.radioButtonWS);
 
         if(ble.isChecked())
         {
             ble_port_close();
         }
 
-        if(bt.isChecked() || ble.isChecked())
+        if(bt.isChecked() || ble.isChecked() || ws.isChecked())
         {
             ip_text.setText("");
             spinner.setAdapter(null);
@@ -546,7 +675,7 @@ public class MainActivity extends Activity {
             btnCONNECT.setBackground(ContextCompat.getDrawable(context, R.drawable.button_pattern));
             btnCONNECT.setText("CONNECT");
             btnCONNECT.setTextColor(Color.BLACK);
-            btnCONNECT.setEnabled(true);
+            btnCONNECT.setEnabled(false);
         }
 
         EditText portNumber = findViewById(R.id.portText);
@@ -554,6 +683,7 @@ public class MainActivity extends Activity {
         portNumber.setText("80");
         portNumber.setInputType(0);
 
+        ws.setChecked(false);
         udp.setChecked(false);
         tcp.setChecked(false);
         bt.setChecked(false);
@@ -566,6 +696,7 @@ public class MainActivity extends Activity {
         RadioButton udp = findViewById(R.id.radioButtonUDP);
         RadioButton tcp = findViewById(R.id.radioButtonTCP);
         RadioButton ble = findViewById(R.id.radioButtonBLE);
+        RadioButton ws = findViewById(R.id.radioButtonWS);
 
         port_text.setText("");
         port_text.setEnabled(false);
@@ -584,6 +715,7 @@ public class MainActivity extends Activity {
         btnCONNECT.setEnabled(true);
         ip_text.setText("");
 
+        ws.setChecked(false);
         http.setChecked(false);
         udp.setChecked(false);
         tcp.setChecked(false);
@@ -605,6 +737,7 @@ public class MainActivity extends Activity {
         RadioButton udp = findViewById(R.id.radioButtonUDP);
         RadioButton tcp = findViewById(R.id.radioButtonTCP);
         RadioButton bt = findViewById(R.id.radioButtonBluetooth);
+        RadioButton ws = findViewById(R.id.radioButtonWS);
 
         port_text.setText("");
         port_text.setEnabled(false);
@@ -615,6 +748,7 @@ public class MainActivity extends Activity {
             listDevices.clear();
         }
 
+        ws.setChecked(false);
         http.setChecked(false);
         udp.setChecked(false);
         tcp.setChecked(false);
@@ -718,6 +852,7 @@ public class MainActivity extends Activity {
     {
         RadioButton bt = findViewById(R.id.radioButtonBluetooth);
         RadioButton ble = findViewById(R.id.radioButtonBLE);
+        RadioButton ws = findViewById(R.id.radioButtonWS);
 
         if(bt.isChecked())
         {
@@ -759,6 +894,15 @@ public class MainActivity extends Activity {
             }
             catch (Exception e){};
         }
+        else if(ws.isChecked())
+        {
+            byte[] byteArray1 = {0x55, 0x2C, (byte) 0xAA, 0x00, 0x00, 0x00, (byte) 0xDA};
+
+            if(webSocket != null)
+            {
+                webSocket.sendBinary(byteArray1);
+            }
+        }
         else
         {
             DoOperation();
@@ -769,6 +913,7 @@ public class MainActivity extends Activity {
     {
         RadioButton bt = findViewById(R.id.radioButtonBluetooth);
         RadioButton ble = findViewById(R.id.radioButtonBLE);
+        RadioButton ws = findViewById(R.id.radioButtonWS);
 
         if(bt.isChecked())
         {
@@ -844,6 +989,46 @@ public class MainActivity extends Activity {
 
             ble_port_write(byteArray1);
         }
+        else if(ws.isChecked())
+        {
+            beepSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+
+                public void onItemSelected(AdapterView<?> parent, View view, int pos, long id) {
+                    beepByte = (byte) ((byte)pos + (byte)1);
+                }
+
+                public void onNothingSelected(AdapterView<?> parent) {
+                    beepByte = 1;
+                }
+            });
+
+            lightSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+
+                public void onItemSelected(AdapterView<?> parent, View view, int pos, long id) {
+                    lightByte = (byte) ((byte)pos + (byte)1);
+                }
+
+                public void onNothingSelected(AdapterView<?> parent) {
+                    lightByte = 1;
+                }
+            });
+
+            byte[] byteArray1 = new byte[]{0x55, 0x26, (byte)0xAA, 0x00, lightByte, beepByte, 0x00};
+            byte checksum = 0;
+
+            for(int i = 0; i < 6; i++)
+            {
+                checksum ^= byteArray1[i];
+            }
+            checksum += 0x07;
+
+            byteArray1 = new byte[]{0x55, 0x26, (byte)0xAA, 0x00, lightByte, beepByte, checksum};
+
+            if(webSocket !=  null)
+            {
+                webSocket.sendBinary(byteArray1);
+            }
+        }
         else {
             isLight = true;
             DoOperation();
@@ -855,6 +1040,7 @@ public class MainActivity extends Activity {
     {
         RadioButton bt = findViewById(R.id.radioButtonBluetooth);
         RadioButton ble = findViewById(R.id.radioButtonBLE);
+        RadioButton ws = findViewById(R.id.radioButtonWS);
 
         byte[] BT_CMDbuffer;
 
@@ -925,6 +1111,42 @@ public class MainActivity extends Activity {
 
             CmdResponse.setText(bytesToHex(ble_port_read(256)));
         }
+        else if(ws.isChecked())
+        {
+            isCommand = true;
+
+            String cmdStr = cmdText.getText().toString().trim();
+            cmdStr = eraseDelimiters(cmdStr);
+
+            if(cmdStr.contains("xx") || cmdStr.contains("xX") || cmdStr.contains("Xx") || cmdStr.contains("XX"))
+            {
+                byte crc = 0;
+                int cmd_length = cmdStr.length() / 2;
+                byte[] calculated_crc = new byte[cmd_length];
+
+                byte[] temp_buffer = hexStringToByteArray(cmdStr.substring(0, cmdStr.length() - 2));
+
+                for(int i = 0; i < temp_buffer.length; i++)
+                {
+                    crc ^= temp_buffer[i];
+                }
+
+                crc += 0x07;
+                calculated_crc[temp_buffer.length] = crc;
+                System.arraycopy(temp_buffer,0,calculated_crc,0, temp_buffer.length);
+
+                cmdBuffer = hexStringToByteArray(bytesToHex(calculated_crc));
+            }
+            else
+            {
+                cmdBuffer = hexStringToByteArray(cmdStr);
+            }
+
+            if(webSocket != null)
+            {
+                webSocket.sendBinary(cmdBuffer);
+            }
+        }
         else
         {
             isCommand = true;
@@ -971,12 +1193,15 @@ public class MainActivity extends Activity {
             btBLEIsConnected = false;
             return;
         }
-
-        scanProgress.setVisibility(View.VISIBLE);
-        getWindow().setFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE, WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
-
         RadioButton bt = findViewById(R.id.radioButtonBluetooth);
         RadioButton ble = findViewById(R.id.radioButtonBLE);
+        RadioButton ws = findViewById(R.id.radioButtonWS);
+
+        if(!ws.isChecked())
+        {
+            scanProgress.setVisibility(View.VISIBLE);
+            getWindow().setFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE, WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
+        }
 
         if(bt.isChecked()) {
 
@@ -1120,6 +1345,25 @@ public class MainActivity extends Activity {
             scanProgress.setVisibility(View.GONE);
             getWindow().clearFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
         }
+        else if(ws.isChecked())
+        {
+            EditText ipET = findViewById(R.id.ipText);
+            EditText portET = findViewById(R.id.portText);
+
+            String ipAddress = ipET.getText().toString().trim();
+            String portStr = portET.getText().toString().trim();
+
+            if(webSocket != null)
+            {
+                webSocket.disconnect();
+            }
+
+            try
+            {
+                openWebSocketConnection(ipAddress + ":" + portStr);
+            }
+            catch (Exception ex){}
+        }
     }
 
     private void checkBTPermissions() {
@@ -1134,17 +1378,6 @@ public class MainActivity extends Activity {
 
     public void discoverBluetoothDevices(final String suffix)
     {
-        String OS_VERSION = Build.VERSION.RELEASE;
-        int major = 0;
-        int minor = 0;
-
-        try
-        {
-            major = Integer.parseInt(OS_VERSION.substring(0, OS_VERSION.indexOf('.')));
-            minor = Integer.parseInt(OS_VERSION.substring(OS_VERSION.indexOf('.') + 1, OS_VERSION.indexOf('.') + 2));
-        }
-        catch (Exception ex){minor = 0;}
-
         spinner.setAdapter(null);
         listDevices.clear();
 
@@ -1163,90 +1396,14 @@ public class MainActivity extends Activity {
             catch (Exception ex){}
         }
 
-        if(major == 9 && minor > 0)
+        if(listDevices.size() > 0)
         {
-            scanProgress.setVisibility(View.VISIBLE);
-
-            getWindow().setFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE, WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
-
-            mBTAdapter.startDiscovery();
-
-            new Thread() {
-                public void run() {
-                    int counter = 0;
-                    while(true)
-                    {
-                        counter++;
-
-                        if(counter == 10)
-                        {
-                            mBTAdapter.cancelDiscovery();
-                            break;
-                        }
-
-                        try {
-                            Thread.sleep(1000);
-                        } catch (InterruptedException e) {
-                            e.printStackTrace();
-                        }
-                    }
-                }
-            }.start();
-
-            BroadcastReceiver mReceiver = new BroadcastReceiver() {
-                public void onReceive(Context context, Intent intent) {
-                    String action = intent.getAction();
-
-                    if (BluetoothDevice.ACTION_FOUND.equals(action))
-                    {
-                        BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
-
-                        try
-                        {
-                            if(device.getName().startsWith("ON") && device.getName().endsWith(suffix))
-                            {
-                                listDevices.add(device.getName() + " " + device.getAddress());
-                            }
-                        }
-                        catch (Exception ex){}
-                    }
-                    else if(BluetoothAdapter.ACTION_DISCOVERY_FINISHED.equals(action))
-                    {
-                        LinkedHashSet<String> hashSet = new LinkedHashSet<>(listDevices);
-                        listWithoutDuplicates = new ArrayList<>(hashSet);
-
-                        if(listWithoutDuplicates.size() > 0)
-                        {
-                            spinner.setAdapter(new ArrayAdapter<String>(MainActivity.this,android.R.layout.simple_dropdown_item_1line,listWithoutDuplicates));
-                        }
-                        else
-                        {
-                            spinner.setAdapter(null);
-                            Toast.makeText(getApplicationContext(), "No devices found, please try again", Toast.LENGTH_SHORT).show();
-                            ip_text.setText("");
-                        }
-
-                        getWindow().clearFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
-                        scanProgress.setVisibility(View.GONE);
-                    }
-                }
-            };
-
-            IntentFilter filter = new IntentFilter(BluetoothDevice.ACTION_FOUND);
-            filter.addAction(BluetoothAdapter.ACTION_DISCOVERY_FINISHED);
-            registerReceiver(mReceiver, filter);
+             spinner.setAdapter(new ArrayAdapter<String>(MainActivity.this,android.R.layout.simple_dropdown_item_1line,listDevices));
         }
         else
         {
-            if(listDevices.size() > 0)
-            {
-                spinner.setAdapter(new ArrayAdapter<String>(MainActivity.this,android.R.layout.simple_dropdown_item_1line,listDevices));
-            }
-            else
-            {
-                Toast.makeText(getApplicationContext(), "No paired devices found", Toast.LENGTH_SHORT).show();
-                ip_text.setText("");
-            }
+             Toast.makeText(getApplicationContext(), "No paired devices found", Toast.LENGTH_SHORT).show();
+             ip_text.setText("");
         }
     }
 
@@ -1491,6 +1648,45 @@ public class MainActivity extends Activity {
         {
             data = null;
             return data;
+        }
+    }
+
+    public void openWebSocketConnection(final String ipStr)
+    {
+
+        WebSocketFactory factory = new WebSocketFactory().setConnectionTimeout(5000);
+
+        try {
+            webSocket = factory.createSocket("ws://" + ipStr);
+
+            webSocket.addListener(new WebSocketAdapter() {
+                @Override
+                public void onBinaryMessage(WebSocket websocket, byte[] message) throws Exception {
+
+                    if(isCommand == true)
+                    {
+                        mHandler.obtainMessage(WEBSOCKET_COMMAND, 1, -1, message)
+                                .sendToTarget();
+                    }
+                    else
+                    {
+                        mHandler.obtainMessage(WEBSOCKET_GETUID, 1, -1, message)
+                                .sendToTarget();
+                    }
+                }
+
+                @Override
+                public void onConnected(WebSocket webSocket, Map<String, List<String>> headers)
+                {
+                    mHandler.obtainMessage(WEBSOCKET_CONNECTION, 1, -1)
+                            .sendToTarget();
+                }
+            });
+
+            webSocket.connectAsynchronously();
+
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 }
