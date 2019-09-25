@@ -63,7 +63,6 @@ import static android.widget.Toast.makeText;
 
 public class MainActivity extends Activity {
 
-    WebSocketAdapter WSA = new WebSocketAdapter();
     WebSocket webSocket = null;
     private static final int WEBSOCKET_GETUID = 4;
     private static final int WEBSOCKET_CONNECTION = 5;
@@ -477,16 +476,16 @@ public class MainActivity extends Activity {
                 RadioButton bt = findViewById(R.id.radioButtonBluetooth);
                 RadioButton ble = findViewById(R.id.radioButtonBLE);
 
+                if(bt.isChecked() || ble.isChecked())
+                {
+                    spinner.setAdapter(null);
+                }
+
                 http.setChecked(false);
                 udp.setChecked(false);
                 tcp.setChecked(false);
                 bt.setChecked(false);
                 ble.setChecked(false);
-
-                if(bt.isChecked() || ble.isChecked())
-                {
-                    spinner.setAdapter(null);
-                }
 
                 port_text.setText("8881");
                 port_text.setEnabled(true);
